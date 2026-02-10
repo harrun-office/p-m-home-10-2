@@ -1,0 +1,13 @@
+# Netlify config for SPA (React Router)
+# If your app lives in client/, set "Base directory" to "client" in Netlify UI,
+# then Build command: npm run build, Publish directory: dist
+
+[build]
+  publish = "client/dist"
+  command = "cd client && npm run build"
+
+# SPA: serve index.html for all routes (fixes 404 on refresh / direct URL)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
