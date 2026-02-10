@@ -6,11 +6,11 @@
 const STORAGE_KEY = 'pm-theme';
 
 export function getTheme() {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined') return 'light';
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === 'dark' || stored === 'light') return stored;
-  // Default to dark mode
-  return 'dark';
+  // First-time user: default to light theme only
+  return 'light';
 }
 
 export function setTheme(theme) {

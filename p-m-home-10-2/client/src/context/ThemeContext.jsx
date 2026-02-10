@@ -7,11 +7,10 @@ const ThemeContext = createContext(null);
  * Theme provider: manages theme state and provides reactive theme updates
  */
 export function ThemeProvider({ children }) {
-  // Initialize with dark mode as default
+  // Initialize with light theme for first-time users
   const [theme, setThemeState] = useState(() => {
     const stored = getTheme();
-    // If no stored theme, default to dark
-    return stored || 'dark';
+    return stored || 'light';
   });
 
   // Apply theme on mount and when theme changes
