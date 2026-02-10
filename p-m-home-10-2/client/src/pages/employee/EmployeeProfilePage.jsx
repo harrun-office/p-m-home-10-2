@@ -1,13 +1,64 @@
-import { getSession } from '../../store/sessionStore.js';
+import { useState } from 'react';
+import { getSession, setSession } from '../../store/sessionStore.js';
+import { useDataStore } from '../../store/dataStore.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import { User, Mail, Building, Users, Save } from 'lucide-react';
 
 export function EmployeeProfilePage() {
-  const session = getSession();
+  const storedSession = getSession();
+  const { state, updateUser } = useDataStore();
+  const [session, setSessionState] = useState(storedSession);
+  const [firstName, setFirstName] = useState(storedSession?.name?.split(' ')[0] ?? '');
+  const [lastName, setLastName] = useState(storedSession?.name?.split(' ').slice(1).join(' ') ?? '');
+  const [email, setEmail] = useState(storedSession?.email ?? '');
+  const [saveMessage, setSaveMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   if (!session) return null;
+
+  const currentUser = state.users?.find((u) => u.id === session.userId) || null;
+
+  const handleSave = async () => {
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedFirst && !trimmedLast) {
+      setErrorMessage('Please enter at least a first or last name.');
+      setSaveMessage('');
+      return;
+    }
+
+    const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!trimmedEmail || !emailPattern.test(trimmedEmail)) {
+      setErrorMessage('Please enter a valid email address.');
+      setSaveMessage('');
+      return;
+    }
+
+    const updatedName = `${trimmedFirst} ${trimmedLast}`.trim() || session.name;
+
+    if (currentUser) {
+      await updateUser(currentUser.id, {
+        name: updatedName,
+        email: trimmedEmail,
+      });
+    }
+
+    const updatedSession = {
+      ...session,
+      name: updatedName,
+      email: trimmedEmail,
+    };
+
+    setSession(updatedSession);
+    setSessionState(updatedSession);
+    setErrorMessage('');
+    setSaveMessage('Profile updated successfully.');
+    setTimeout(() => setSaveMessage(''), 3000);
+  };
 
   return (
     <div className="space-y-6">
@@ -29,26 +80,26 @@ export function EmployeeProfilePage() {
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="First Name"
-                value={session.name?.split(' ')[0] || ''}
+                value={firstName}
                 placeholder="Enter first name"
                 leftIcon={User}
-                disabled
+                onChange={(e) => setFirstName(e.target.value)}
               />
               <Input
                 label="Last Name"
-                value={session.name?.split(' ').slice(1).join(' ') || ''}
+                value={lastName}
                 placeholder="Enter last name"
                 leftIcon={User}
-                disabled
+                onChange={(e) => setLastName(e.target.value)}
               />
             </div>
 
             <Input
               label="Email Address"
-              value={session.email || ''}
+              value={email}
               placeholder="Enter email address"
               leftIcon={Mail}
-              disabled
+              onChange={(e) => setEmail(e.target.value)}
             />
 
             <Input
@@ -60,19 +111,26 @@ export function EmployeeProfilePage() {
 
             <Input
               label="Department"
-              value={session.department || 'Development'}
+              value={currentUser?.department || session.department || 'Development'}
               leftIcon={Building}
               disabled
             />
 
             <div className="pt-4">
-              <Button variant="primary" className="w-full" disabled>
+              <Button variant="primary" className="w-full" onClick={handleSave}>
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes
               </Button>
-              <p className="text-xs text-[var(--fg-muted)] mt-2 text-center">
-                Profile editing is disabled in demo mode
-              </p>
+              {errorMessage && (
+                <p className="text-xs text-[var(--danger)] mt-2 text-center">
+                  {errorMessage}
+                </p>
+              )}
+              {saveMessage && (
+                <p className="text-xs text-[var(--fg-muted)] mt-2 text-center">
+                  {saveMessage}
+                </p>
+              )}
             </div>
           </div>
         </Card>

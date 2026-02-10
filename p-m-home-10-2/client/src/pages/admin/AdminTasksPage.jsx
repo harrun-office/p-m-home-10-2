@@ -34,7 +34,8 @@ export function AdminTasksPage() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
-  const [filterDate, setFilterDate] = useState(''); // All dates by default; use "Today" quick filter to narrow
+  const [filterDateStart, setFilterDateStart] = useState(''); // From date
+  const [filterDateEnd, setFilterDateEnd] = useState(''); // To date
   const [filterOverdue, setFilterOverdue] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTasks, setSelectedTasks] = useState(new Set());
@@ -137,11 +138,17 @@ export function AdminTasksPage() {
         return assigneeDepartment === filterDepartment;
       });
     }
-    if (filterDate) {
-      list = list.filter((t) => t.assignedAt && toDayKey(t.assignedAt) === filterDate);
+    if (filterDateStart || filterDateEnd) {
+      list = list.filter((t) => {
+        if (!t.assignedAt) return false;
+        const key = toDayKey(t.assignedAt);
+        if (filterDateStart && key < filterDateStart) return false;
+        if (filterDateEnd && key > filterDateEnd) return false;
+        return true;
+      });
     }
     return list;
-  }, [tasks, projects, users, searchQuery, filterOverdue, filterProject, filterAssignee, filterStatus, filterPriority, filterDate, filterDepartment, userDepartmentMap]);
+  }, [tasks, projects, users, searchQuery, filterOverdue, filterProject, filterAssignee, filterStatus, filterPriority, filterDateStart, filterDateEnd, filterDepartment, userDepartmentMap]);
 
   const getTaskReadOnly = useMemo(() => {
     const projectMap = new Map(projects.map((p) => [p.id, p]));
@@ -278,7 +285,8 @@ export function AdminTasksPage() {
         setFilterStatus('');
         setFilterPriority('');
         setFilterDepartment('');
-        setFilterDate('');
+        setFilterDateStart('');
+        setFilterDateEnd('');
         setSearchQuery('');
         searchParams.delete('filter');
         setSearchParams(searchParams, { replace: true });
@@ -294,7 +302,7 @@ export function AdminTasksPage() {
     if (filterStatus) count++;
     if (filterPriority) count++;
     if (filterDepartment) count++;
-    if (filterDate) count++;
+    if (filterDateStart || filterDateEnd) count++;
     if (searchQuery.trim()) count++;
     return count;
   }
@@ -448,11 +456,11 @@ export function AdminTasksPage() {
                   </button>
                 </span>
               )}
-              {filterDate && (
+              {(filterDateStart || filterDateEnd) && (
                 <span className="inline-flex items-center gap-1 bg-[var(--info-light)] text-[var(--info-muted-fg)] px-2 py-1 rounded-full text-sm">
-                  Date: {filterDate}
+                  Date: {filterDateStart || '…'} → {filterDateEnd || '…'}
                   <button
-                    onClick={() => setFilterDate('')}
+                    onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
                     className="hover:bg-[var(--info-muted)] rounded-full p-0.5"
                   >
                     <X className="w-3 h-3" />
@@ -578,28 +586,35 @@ export function AdminTasksPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="filter-date" className="text-sm font-medium text-[var(--fg)]">Date</label>
+                <label className="text-sm font-medium text-[var(--fg)]">Assigned date</label>
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
-                    id="filter-date"
                     type="date"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
+                    value={filterDateStart}
+                    onChange={(e) => setFilterDateStart(e.target.value)}
                     className="min-w-[140px]"
-                    aria-label="Filter by date"
+                    aria-label="Filter from date"
+                  />
+                  <span className="text-[var(--fg-muted)] text-sm">to</span>
+                  <Input
+                    type="date"
+                    value={filterDateEnd}
+                    onChange={(e) => setFilterDateEnd(e.target.value)}
+                    className="min-w-[140px]"
+                    aria-label="Filter to date"
                   />
                   <Button
-                    variant={filterDate === todayKey() ? 'primary' : 'outline'}
+                    variant={filterDateStart === todayKey() && filterDateEnd === todayKey() ? 'primary' : 'outline'}
                     size="sm"
-                    onClick={() => setFilterDate(todayKey())}
+                    onClick={() => { const today = todayKey(); setFilterDateStart(today); setFilterDateEnd(today); }}
                     className="whitespace-nowrap"
                   >
                     Today
                   </Button>
                   <Button
-                    variant={!filterDate ? 'primary' : 'outline'}
+                    variant={!filterDateStart && !filterDateEnd ? 'primary' : 'outline'}
                     size="sm"
-                    onClick={() => setFilterDate('')}
+                    onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
                     className="whitespace-nowrap"
                   >
                     Show All

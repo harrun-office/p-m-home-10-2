@@ -2,10 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.jsx';
 import { getSession } from '../../store/sessionStore.js';
+import { todayKey, toDayKey } from '../../utils/date.js';
 import { EmptyState } from '../../components/ui/EmptyState.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { Select } from '../../components/ui/Select.jsx';
+import { Input } from '../../components/ui/Input.jsx';
 import { KanbanBoard } from '../../components/admin/tasks/KanbanBoard.jsx';
 import { TaskTable } from '../../components/admin/tasks/TaskTable.jsx';
 import { TaskModal } from '../../components/admin/tasks/TaskModal.jsx';
@@ -32,6 +34,8 @@ export function EmployeeTasksPage() {
   const [filterProject, setFilterProject] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [filterDateStart, setFilterDateStart] = useState(''); // From date
+  const [filterDateEnd, setFilterDateEnd] = useState(''); // To date
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create');
   const [editingTask, setEditingTask] = useState(null);
@@ -71,8 +75,17 @@ export function EmployeeTasksPage() {
     if (filterProject) list = list.filter((t) => t.projectId === filterProject);
     if (filterStatus) list = list.filter((t) => t.status === filterStatus);
     if (filterPriority) list = list.filter((t) => t.priority === filterPriority);
+    if (filterDateStart || filterDateEnd) {
+      list = list.filter((t) => {
+        if (!t.assignedAt) return false;
+        const key = toDayKey(t.assignedAt);
+        if (filterDateStart && key < filterDateStart) return false;
+        if (filterDateEnd && key > filterDateEnd) return false;
+        return true;
+      });
+    }
     return list;
-  }, [myTasks, filterProject, filterStatus, filterPriority]);
+  }, [myTasks, filterProject, filterStatus, filterPriority, filterDateStart, filterDateEnd]);
 
   const getTaskReadOnly = useMemo(() => {
     const projectMap = new Map(projects.map((p) => [p.id, p]));
@@ -208,6 +221,51 @@ export function EmployeeTasksPage() {
                 <option value="LOW">Low</option>
               </Select>
             </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-[var(--fg-muted)]">
+                Assigned date
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  type="date"
+                  value={filterDateStart}
+                  onChange={(e) => setFilterDateStart(e.target.value)}
+                  className="min-w-[140px]"
+                  aria-label="Filter from date"
+                />
+                <span className="text-[var(--fg-muted)] text-xs">to</span>
+                <Input
+                  type="date"
+                  value={filterDateEnd}
+                  onChange={(e) => setFilterDateEnd(e.target.value)}
+                  className="min-w-[140px]"
+                  aria-label="Filter to date"
+                />
+                <Button
+                  variant={filterDateStart === todayKey() && filterDateEnd === todayKey() ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    const today = todayKey();
+                    setFilterDateStart(today);
+                    setFilterDateEnd(today);
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Today
+                </Button>
+                <Button
+                  variant={!filterDateStart && !filterDateEnd ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => {
+                    setFilterDateStart('');
+                    setFilterDateEnd('');
+                  }}
+                  className="whitespace-nowrap"
+                >
+                  Show all
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </Card>
@@ -220,7 +278,13 @@ export function EmployeeTasksPage() {
           onAction={
             myTasks.length === 0
               ? handleCreateTask
-              : () => { setFilterProject(''); setFilterStatus(''); setFilterPriority(''); }
+              : () => {
+                  setFilterProject('');
+                  setFilterStatus('');
+                  setFilterPriority('');
+                  setFilterDateStart('');
+                  setFilterDateEnd('');
+                }
           }
         />
       ) : view === VIEW_KANBAN ? (

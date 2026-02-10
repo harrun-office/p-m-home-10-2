@@ -12,6 +12,7 @@ import { TaskTable } from '../../components/admin/tasks/TaskTable.jsx';
 import { TaskModal } from '../../components/admin/tasks/TaskModal.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
+import { Select } from '../../components/ui/Select.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { Avatar } from '../../components/ui/Avatar.jsx';
 import { daysUntil } from '../../utils/date.js';
@@ -69,6 +70,53 @@ export function AdminProjectDetailPage() {
     () => (project ? tasks.filter((t) => t.projectId === project.id) : []),
     [project, tasks]
   );
+  const [taskFilterAssignee, setTaskFilterAssignee] = useState('');
+  const [taskFilterPriority, setTaskFilterPriority] = useState('');
+  const [taskSort, setTaskSort] = useState('priority-deadline');
+
+  const filteredProjectTasks = useMemo(() => {
+    let list = [...projectTasks];
+
+    if (taskFilterAssignee) {
+      list = list.filter((t) => t.assigneeId === taskFilterAssignee);
+    }
+    if (taskFilterPriority) {
+      list = list.filter((t) => t.priority === taskFilterPriority);
+    }
+
+    const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+
+    if (taskSort === 'deadline') {
+      list.sort((a, b) => {
+        const da = a.deadline ? new Date(a.deadline) : null;
+        const db = b.deadline ? new Date(b.deadline) : null;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+      });
+    } else if (taskSort === 'recent') {
+      list.sort((a, b) => {
+        const ua = a.updatedAt || a.assignedAt || '';
+        const ub = b.updatedAt || b.assignedAt || '';
+        return (ub || '').localeCompare(ua || '');
+      });
+    } else if (taskSort === 'priority-deadline') {
+      list.sort((a, b) => {
+        const pa = priorityOrder[a.priority] ?? 99;
+        const pb = priorityOrder[b.priority] ?? 99;
+        if (pa !== pb) return pa - pb;
+        const da = a.deadline ? new Date(a.deadline) : null;
+        const db = b.deadline ? new Date(b.deadline) : null;
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+      });
+    }
+
+    return list;
+  }, [projectTasks, taskFilterAssignee, taskFilterPriority, taskSort]);
   const taskCountByStatus = useMemo(() => {
     const m = { TODO: 0, IN_PROGRESS: 0, COMPLETED: 0 };
     projectTasks.forEach((t) => {
@@ -540,7 +588,7 @@ export function AdminProjectDetailPage() {
           {assigneeNotifyMessage && (
             <div className="px-4 py-2 bg-[var(--info-light)] text-[var(--info-muted-fg)] rounded-lg text-sm">{assigneeNotifyMessage}</div>
           )}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex rounded border border-[var(--border)] overflow-hidden">
               <button
                 type="button"
@@ -557,6 +605,48 @@ export function AdminProjectDetailPage() {
                 Table
               </button>
             </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-1">
+                <span className="text-[var(--fg-muted)]">Assignee</span>
+                <Select
+                  value={taskFilterAssignee}
+                  onChange={(e) => setTaskFilterAssignee(e.target.value)}
+                  className="min-w-[120px]"
+                >
+                  <option value="">All</option>
+                  {assignedMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[var(--fg-muted)]">Priority</span>
+                <Select
+                  value={taskFilterPriority}
+                  onChange={(e) => setTaskFilterPriority(e.target.value)}
+                  className="min-w-[110px]"
+                >
+                  <option value="">All</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[var(--fg-muted)]">Sort</span>
+                <Select
+                  value={taskSort}
+                  onChange={(e) => setTaskSort(e.target.value)}
+                  className="min-w-[150px]"
+                >
+                  <option value="priority-deadline">Priority · Deadline</option>
+                  <option value="deadline">Deadline (soonest)</option>
+                  <option value="recent">Recently updated</option>
+                </Select>
+              </div>
+            </div>
             {!isReadOnly && (
               <button
                 type="button"
@@ -569,7 +659,7 @@ export function AdminProjectDetailPage() {
           </div>
           {tasksView === VIEW_KANBAN ? (
             <KanbanBoard
-              tasks={projectTasks}
+              tasks={filteredProjectTasks}
               users={users}
               onMoveStatus={handleMoveTaskStatus}
               onEdit={handleEditTask}
@@ -577,7 +667,7 @@ export function AdminProjectDetailPage() {
             />
           ) : (
             <TaskTable
-              tasks={projectTasks}
+              tasks={filteredProjectTasks}
               users={users}
               projects={projects}
               onEdit={handleEditTask}

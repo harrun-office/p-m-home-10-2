@@ -13,11 +13,11 @@ import {
   Target,
   ArrowRight,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore.jsx';
 import { getSession } from '../../store/sessionStore.js';
 import { todayKey, toDayKey } from '../../utils/date.js';
-import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { SkeletonCard } from '../../components/ui/Skeleton.jsx';
 import { MotionPage } from '../../components/motion/MotionPage.jsx';
@@ -38,6 +38,7 @@ const PROJECT_KPIS = [
 ];
 
 const TASK_KPIS = [
+  { key: 'overdueTasks', label: 'Overdue', icon: AlertCircle, accent: 'var(--danger)', bg: 'var(--danger-light)' },
   { key: 'totalTasks', label: 'All tasks', icon: ListTodo, accent: 'var(--info)', bg: 'var(--info-light)' },
   { key: 'totalOpenTasks', label: 'To do', icon: Circle, accent: 'var(--warning)', bg: 'var(--warning-light)' },
   { key: 'tasksInProgress', label: 'In progress', icon: Loader2, accent: 'var(--teal)', bg: 'var(--teal-light)' },
@@ -90,10 +91,15 @@ export function EmployeeDashboardPage() {
   }, [myProjects]);
 
   const taskKpis = useMemo(() => {
+    const today = todayKey();
+    const overdue = myTasks.filter(
+      (t) => t.status !== 'COMPLETED' && t.deadline && toDayKey(t.deadline) < today
+    ).length;
     const todo = myTasks.filter((t) => t.status === 'TODO').length;
     const inProgress = myTasks.filter((t) => t.status === 'IN_PROGRESS').length;
     const completed = myTasks.filter((t) => t.status === 'COMPLETED').length;
     return {
+      overdueTasks: overdue,
       totalTasks: myTasks.length,
       totalOpenTasks: todo,
       tasksInProgress: inProgress,
@@ -162,22 +168,6 @@ export function EmployeeDashboardPage() {
                 Here&apos;s what&apos;s happening today
               </h2>
             </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
-              <Link
-                to="/app/tasks"
-                className="inline-flex items-center justify-center gap-2 font-medium rounded-xl px-4 py-2 text-sm bg-[var(--primary)] text-[var(--primary-fg)] hover:bg-[var(--primary-hover)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 transition-all duration-200"
-              >
-                <ListTodo className="w-4 h-4 shrink-0" aria-hidden />
-                View my tasks
-              </Link>
-              <Link
-                to="/app/projects"
-                className="inline-flex items-center justify-center gap-2 font-medium rounded-xl px-4 py-2 text-sm border-2 border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] hover:bg-[var(--muted)] hover:border-[var(--border-focus)] focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 transition-all duration-200"
-              >
-                <FolderKanban className="w-4 h-4 shrink-0" aria-hidden />
-                My projects
-              </Link>
-            </div>
           </div>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-4 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur-sm px-5 py-4 shadow-[var(--shadow-sm)] min-w-[140px]">
@@ -208,23 +198,6 @@ export function EmployeeDashboardPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 shadow-[var(--shadow-sm)]">
-        <span className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mr-1">
-          Quick actions
-        </span>
-        <Link to="/app/tasks">
-          <Button variant="primary" size="sm">
-            View my tasks
-          </Button>
-        </Link>
-        <Link to="/app/projects">
-          <Button variant="outline" size="sm">
-            View my projects
-          </Button>
-        </Link>
       </div>
 
       {/* Today's tasks — current day only (due today) */}
@@ -357,9 +330,9 @@ export function EmployeeDashboardPage() {
             View all <ArrowRight className="w-4 h-4" aria-hidden />
           </Link>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {showSkeleton ? (
-            Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} lines={2} />)
+            Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} lines={2} />)
           ) : (
             TASK_KPIS.map(({ key, label, icon: Icon, accent, bg }) => (
               <Link

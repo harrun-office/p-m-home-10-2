@@ -10,9 +10,25 @@ import { Button } from '../../ui/Button.jsx';
 import { Skeleton } from '../../ui/Skeleton.jsx';
 
 const COLUMNS = [
-  { id: 'TODO', label: 'To Do', icon: Circle, colorClass: 'bg-[var(--info-light)] border-[var(--info-muted)]' },
-  { id: 'IN_PROGRESS', label: 'In Progress', icon: Loader2, colorClass: 'bg-[var(--warning-light)] border-[var(--warning-muted)]' },
-  { id: 'COMPLETED', label: 'Completed', icon: CheckCircle2, colorClass: 'bg-[var(--success-light)] border-[var(--success-muted)]' },
+  {
+    id: 'TODO',
+    label: 'To Do',
+    icon: Circle,
+    // Neutral column background so it matches the overall theme in light and dark mode
+    colorClass: 'bg-[var(--card)] border-[var(--border)]',
+  },
+  {
+    id: 'IN_PROGRESS',
+    label: 'In Progress',
+    icon: Loader2,
+    colorClass: 'bg-[var(--card)] border-[var(--border)]',
+  },
+  {
+    id: 'COMPLETED',
+    label: 'Completed',
+    icon: CheckCircle2,
+    colorClass: 'bg-[var(--card)] border-[var(--border)]',
+  },
 ];
 
 // Enhanced project color palette with more sophisticated colors and gradients

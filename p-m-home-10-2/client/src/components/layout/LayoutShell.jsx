@@ -15,8 +15,6 @@ function LayoutShellContent({ children }) {
       className="layout-shell flex min-h-0 flex-1"
       style={{
         background: 'var(--app-canvas)',
-        backgroundImage: 'var(--app-canvas-dots)',
-        backgroundSize: '24px 24px',
       }}
     >
       <Sidebar />

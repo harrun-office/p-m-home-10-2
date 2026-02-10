@@ -638,52 +638,9 @@ export function AdminDashboardPage() {
             </div>
           </Card>
         </section>
-        {/* Quick Actions Panel */}
-        <section aria-labelledby="workflow-optimization">
+        {/* Quick Actions Panel (keyboard shortcuts only, buttons removed per design) */}
+        <section>
           <Card className="h-full flex flex-col p-4 sm:p-6">
-            <h3 id="workflow-optimization" className="font-semibold text-[var(--fg)] mb-3 sm:mb-4 flex items-center gap-2">
-              <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--primary)]" />
-              Quick Actions
-            </h3>
-            <div className="space-y-2.5 sm:space-y-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-sm"
-                onClick={() => showToast({ title: 'Create Project', message: 'Opening project creation form...' })}
-                leftIcon={Plus}
-              >
-                <span className="truncate">Create New Project</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-sm"
-                onClick={() => showToast({ title: 'Add Team Member', message: 'Opening user invitation form...' })}
-                leftIcon={UserCheck}
-              >
-                <span className="truncate">Invite Team Member</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-sm"
-                onClick={() => showToast({ title: 'Generate Report', message: 'Creating performance report...' })}
-                leftIcon={BarChart3}
-              >
-                <span className="truncate">Generate Report</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start text-sm"
-                onClick={() => showToast({ title: 'Schedule Meeting', message: 'Opening calendar...' })}
-                leftIcon={Calendar}
-              >
-                <span className="truncate">Schedule Meeting</span>
-              </Button>
-            </div>
-
             <div className="mt-4 sm:mt-6 pt-4 border-t border-[var(--border)]">
               <h4 className="text-sm font-medium text-[var(--fg-muted)] mb-3">Keyboard Shortcuts</h4>
               <div className="grid grid-cols-2 gap-2 text-xs text-[var(--fg-muted)]">
