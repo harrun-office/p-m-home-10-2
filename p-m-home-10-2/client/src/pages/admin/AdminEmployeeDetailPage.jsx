@@ -7,7 +7,7 @@ import { Card } from '../../components/ui/Card.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Select } from '../../components/ui/Select.jsx';
 import { Input } from '../../components/ui/Input.jsx';
-import { Mail, ListTodo, FolderKanban, ArrowLeft, ChevronDown, User, Briefcase, CheckSquare, Clock, FolderOpen, Pause, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { Mail, ListTodo, FolderKanban, ArrowLeft, ArrowRight, ChevronDown, User, Briefcase, CheckSquare, Clock, FolderOpen, Pause, CheckCircle2, MoreHorizontal } from 'lucide-react';
 
 const TASK_STATUS_LABELS = { TODO: 'To Do', IN_PROGRESS: 'In Progress', COMPLETED: 'Completed' };
 const TASK_STATUS_VARIANT = { TODO: 'neutral', IN_PROGRESS: 'warning', COMPLETED: 'success' };

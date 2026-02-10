@@ -17,6 +17,24 @@
  */
 
 /**
+ * @typedef {Object} ProjectStatusEvent
+ * @property {"ACTIVE"|"ON_HOLD"|"COMPLETED"} status
+ * @property {string} at - ISO date string
+ * @property {string} [userId] - who made the change
+ * @property {string} [note] - optional reason/note
+ */
+
+/**
+ * @typedef {Object} ProjectActivityEvent
+ * @property {string} id
+ * @property {"date_change"|"member_added"|"member_removed"|"milestone"|"task_milestone"} type
+ * @property {string} at - ISO date string
+ * @property {string} [userId] - who did the action
+ * @property {string} [note] - optional note
+ * @property {Object} [payload] - type-specific data (field, oldValue, newValue for date_change; userId for member_*; title for milestone; taskId, message for task_milestone)
+ */
+
+/**
  * @typedef {Object} Project
  * @property {string} id
  * @property {string} name
@@ -25,6 +43,9 @@
  * @property {string} startDate - ISO date string
  * @property {string} endDate - ISO date string
  * @property {string[]} assignedUserIds
+ * @property {string} [createdAt] - ISO date string when project was created
+ * @property {ProjectStatusEvent[]} [statusHistory] - history of status changes
+ * @property {ProjectActivityEvent[]} [activityLog] - other timeline events (date changes, member changes, milestones)
  */
 
 /**

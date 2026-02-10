@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.jsx';
 import { getSession } from '../../store/sessionStore.js';
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx';
 import { ReadOnlyBanner } from '../../components/ui/ReadOnlyBanner.jsx';
 import { ProjectModal } from '../../components/admin/projects/ProjectModal.jsx';
+import { ProjectTimeline } from '../../components/admin/projects/ProjectTimeline.jsx';
 import { KanbanBoard } from '../../components/admin/tasks/KanbanBoard.jsx';
 import { TaskTable } from '../../components/admin/tasks/TaskTable.jsx';
 import { TaskModal } from '../../components/admin/tasks/TaskModal.jsx';
@@ -17,6 +18,7 @@ import { daysUntil } from '../../utils/date.js';
 import { CalendarDays, Clock, Users, CheckCircle2, AlertCircle, Target, Building2, Timer, UserPlus, X, Search, Check, User } from 'lucide-react';
 
 const TAB_OVERVIEW = 'overview';
+const TAB_TIMELINE = 'timeline';
 const TAB_MEMBERS = 'members';
 const TAB_TASKS = 'tasks';
 
@@ -31,8 +33,9 @@ const STATUS_LABELS = { ACTIVE: 'Active', ON_HOLD: 'On Hold', COMPLETED: 'Comple
  */
 export function AdminProjectDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const { state, setProjectStatus, moveTaskStatus, deleteProject, assignMembers } = useDataStore();
+  const { state, setProjectStatus, moveTaskStatus, deleteProject, assignMembers, addProjectMilestone } = useDataStore();
   const session = getSession();
   const sessionForRepo = session ? { userId: session.userId, role: session.role } : null;
   const [activeTab, setActiveTab] = useState(TAB_OVERVIEW);
@@ -49,6 +52,13 @@ export function AdminProjectDetailPage() {
   useEffect(() => {
     if (!session) navigate('/login', { replace: true });
   }, [session, navigate]);
+
+  useEffect(() => {
+    const tab = location.state?.tab;
+    if (tab && [TAB_OVERVIEW, TAB_TIMELINE, TAB_MEMBERS, TAB_TASKS].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location.state?.tab]);
 
   const projects = state.projects || [];
   const users = state.users || [];
@@ -160,6 +170,7 @@ export function AdminProjectDetailPage() {
 
   const tabs = [
     { id: TAB_OVERVIEW, label: 'Overview' },
+    { id: TAB_TIMELINE, label: 'Timeline' },
     { id: TAB_MEMBERS, label: 'Members' },
     { id: TAB_TASKS, label: 'Tasks' },
   ];
@@ -168,7 +179,7 @@ export function AdminProjectDetailPage() {
     <div className="max-w-[var(--content-max)]">
       <Link to="/admin/projects" className="text-sm text-[var(--primary)] hover:text-[var(--primary-hover)] hover:underline mb-4 inline-block transition-colors">← Back to Projects</Link>
 
-      <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-6">
+      <div className="flex flex-wrap gap-4 text-sm text-[var(--fg-muted)] mb-6">
         <span>Start: {project.startDate ? project.startDate.slice(0, 10) : '—'}</span>
         <span>End: {project.endDate ? project.endDate.slice(0, 10) : '—'}</span>
       </div>
@@ -349,12 +360,24 @@ export function AdminProjectDetailPage() {
         </div>
       )}
 
+      {activeTab === TAB_TIMELINE && project && (
+        <ProjectTimeline
+          project={project}
+          users={users}
+          tasks={projectTasks}
+          addProjectMilestone={addProjectMilestone}
+          isReadOnly={isReadOnly}
+        />
+      )}
+
       {activeTab === TAB_MEMBERS && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold text-[var(--fg)] mb-1">Project Team</h2>
-              <p className="text-sm text-[var(--fg-muted)]">Manage team members assigned to this project</p>
+              <p className="text-sm text-[var(--fg-muted)]">
+                Manage the people working on this project. Members are selected from your global Employees list.
+              </p>
             </div>
             {project && !isReadOnly && (
               <Button
@@ -390,7 +413,7 @@ export function AdminProjectDetailPage() {
           ) : (
             <Card>
               <p className="text-sm text-[var(--fg-muted)] py-6 text-center">
-                No members assigned yet. Click &quot;Add members to this project&quot; to add team members.
+                No members assigned yet. Use &quot;Add members to this project&quot; to choose existing employees from your team list.
               </p>
             </Card>
           )}
@@ -420,11 +443,21 @@ export function AdminProjectDetailPage() {
           setAddMembersSearch('');
         };
         return createPortal(
-          <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6">
+          <div
+            className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-members-title"
+          >
             <div className="absolute inset-0 bg-[var(--backdrop)] backdrop-blur-sm" onClick={() => setAddMembersModalOpen(false)} aria-hidden />
             <div className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-2xl)] flex flex-col max-h-[90vh]">
               <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-                <h2 className="text-lg font-semibold text-[var(--fg)]">Add members to this project</h2>
+                <div>
+                  <h2 id="add-members-title" className="text-lg font-semibold text-[var(--fg)]">Add members to this project</h2>
+                  <p className="text-xs text-[var(--fg-muted)] mt-1">
+                    You&apos;re adding existing employees from the Employees page. Changes here only affect this project.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => setAddMembersModalOpen(false)}

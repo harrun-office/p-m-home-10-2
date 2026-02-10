@@ -98,8 +98,13 @@ export function Topbar() {
 
   return (
     <header
-      className="sticky top-0 z-50 w-full border-b border-border/20 bg-gradient-to-r from-background/95 via-background/90 to-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80"
-      style={{ height: HEADER_HEIGHT }}
+      className="sticky top-0 z-50 w-full border-b backdrop-blur-xl supports-[backdrop-filter]:bg-[var(--header-bg)]"
+      style={{
+        height: HEADER_HEIGHT,
+        backgroundColor: 'var(--header-bg)',
+        borderColor: 'var(--header-border)',
+        boxShadow: 'var(--header-shadow)',
+      }}
       role="banner"
     >
       <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -109,8 +114,8 @@ export function Topbar() {
           {/* Brand section - always visible */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex flex-col justify-center ml-2">
-              <span className="text-sm font-semibold leading-tight text-foreground truncate">Project Management</span>
-              <span className="text-xs text-muted-foreground font-medium leading-tight truncate max-w-[200px]">
+              <span className="text-sm font-semibold leading-tight truncate" style={{ color: 'var(--fg)' }}>Project Management</span>
+              <span className="text-xs font-medium leading-tight truncate max-w-[200px]" style={{ color: 'var(--fg-muted)' }}>
                 {pageTitle || 'Dashboard'}
               </span>
             </div>
@@ -126,7 +131,7 @@ export function Topbar() {
           <button
             type="button"
             onClick={() => toggleTheme()}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/50 bg-card text-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--card)] text-[var(--fg)] shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-[var(--accent)] hover:text-[var(--accent-fg)] hover:border-[var(--accent)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)]"
             aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
           >
             {isDark ? (
@@ -145,13 +150,16 @@ export function Topbar() {
               aria-expanded={profileOpen}
               aria-haspopup="true"
               aria-label="User menu"
-              className="hidden sm:flex items-center gap-2 rounded-lg border border-border/50 bg-card backdrop-blur-sm px-3 py-2 shadow-sm transition-all duration-200 hover:bg-accent/60 hover:shadow-md hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2"
+              className="hidden sm:flex items-center gap-2 rounded-lg border bg-[var(--card)] backdrop-blur-sm px-3 py-2 shadow-sm transition-all duration-200 hover:bg-[var(--muted)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)]"
+              style={{ borderColor: 'var(--border)' }}
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 text-xs font-bold text-white ring-2 ring-background/80 shadow-sm">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 text-xs font-bold text-white ring-2 shadow-sm opacity-90"
+                style={{ boxShadow: '0 0 0 2px var(--header-bg)' }}
+              >
                 {userInitial}
               </div>
               <div className="flex flex-col items-start min-w-0">
-                <span className="text-sm font-medium leading-none truncate max-w-[120px] text-foreground" title={displayName}>
+                <span className="text-sm font-medium leading-none truncate max-w-[120px]" style={{ color: 'var(--fg)' }} title={displayName}>
                   {displayName}
                 </span>
               </div>
@@ -164,7 +172,8 @@ export function Topbar() {
               aria-expanded={profileOpen}
               aria-haspopup="true"
               aria-label="User menu"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 text-xs font-bold text-white ring-2 ring-background/80 shadow-sm sm:hidden border border-border/50"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 text-xs font-bold text-white shadow-sm sm:hidden border border-[var(--border)]"
+              style={{ boxShadow: '0 0 0 2px var(--header-bg)' }}
             >
               {userInitial}
             </button>
@@ -174,25 +183,25 @@ export function Topbar() {
               <div
                 ref={menuRef}
                 role="menu"
-                className="absolute right-0 top-full mt-3 z-50 min-w-[180px] rounded-lg border border-border bg-card py-1 shadow-lg"
+                className="absolute right-0 top-full mt-3 z-50 min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--card)] py-1 shadow-lg"
               >
                 <button
                   type="button"
                   role="menuitem"
                   onClick={handleProfile}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent/60 hover:text-accent-foreground transition-colors text-left"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[var(--fg)] transition-colors text-left hover:bg-[var(--muted)] hover:text-[var(--fg)]"
                 >
-                  <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Profile
+                  <User className="h-4 w-4 shrink-0 text-[var(--fg-muted)]" />
+                  <span>Profile</span>
                 </button>
                 <button
                   type="button"
                   role="menuitem"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors text-left"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[var(--danger)] transition-colors text-left hover:bg-[var(--danger-light)] hover:text-[var(--danger)]"
                 >
                   <LogOut className="h-4 w-4 shrink-0" />
-                  Sign out
+                  <span>Sign out</span>
                 </button>
               </div>
             )}

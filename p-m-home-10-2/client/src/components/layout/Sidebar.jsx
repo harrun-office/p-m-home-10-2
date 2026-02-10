@@ -23,26 +23,40 @@ function NavItem({ to, label, icon: Icon, basePath, unreadCount = 0, collapsed, 
       onClick={collapsed ? (e) => e.stopPropagation() : undefined}
       className={({ isActive: active }) =>
         `group relative flex items-center gap-3 rounded-lg transition-all duration-300 ease-out ${collapsed ? 'px-2 py-3 justify-center' : 'px-3 py-2.5'
-        } text-sm font-medium ${active
-          ? 'bg-gradient-to-r from-blue-50/80 to-indigo-50/80 text-blue-700 shadow-sm ring-1 ring-blue-200/30 backdrop-blur-sm'
-          : 'text-muted-foreground hover:bg-gradient-to-r hover:from-blue-50/80 hover:to-indigo-50/80 hover:text-blue-700 hover:shadow-sm hover:ring-1 hover:ring-blue-200/30 hover:backdrop-blur-sm'
-        }`
+        } text-sm font-medium`
       }
       style={{
         transitionDelay: `${delay}ms`,
+        color: isNavActive ? 'var(--nav-item-active-fg)' : 'var(--nav-item-fg)',
+        backgroundColor: isNavActive ? 'var(--nav-item-active-bg)' : 'transparent',
+        boxShadow: isNavActive ? 'inset 0 0 0 1px var(--nav-item-active-border)' : undefined,
+      }}
+      onMouseEnter={(e) => {
+        if (!isNavActive) {
+          e.currentTarget.style.backgroundColor = 'var(--nav-item-hover-bg)';
+          e.currentTarget.style.color = 'var(--nav-item-hover-fg)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = isNavActive ? 'var(--nav-item-active-bg)' : 'transparent';
+        e.currentTarget.style.color = isNavActive ? 'var(--nav-item-active-fg)' : 'var(--nav-item-fg)';
       }}
     >
       {/* Active indicator */}
       {isNavActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-r-full" />
+        <div
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+          style={{ background: 'var(--nav-item-active-border)' }}
+        />
       )}
 
       <Icon
         className={`${collapsed ? 'h-5 w-5' : 'h-4 w-4'
           } flex-shrink-0 transition-all duration-300 ${isNavActive
-            ? 'text-blue-600 scale-110'
+            ? 'scale-110'
             : 'group-hover:scale-105'
           }`}
+        style={{ color: 'inherit' }}
         aria-hidden
       />
 
@@ -52,21 +66,13 @@ function NavItem({ to, label, icon: Icon, basePath, unreadCount = 0, collapsed, 
             {label}
           </span>
           {unreadCount > 0 && (
-            <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm transition-all duration-300 ${isNavActive
-              ? 'bg-red-500 scale-110 shadow-lg'
-              : 'bg-red-500 group-hover:scale-105'
-              }`}
-              style={{ transitionDelay: `${delay + 50}ms` }}>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white bg-[var(--danger)] shadow-sm transition-all duration-300 group-hover:scale-105">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </div>
       )}
 
-      {/* Hover effect - Overview section only */}
-      {isOverviewGroup && (
-        <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
-      )}
     </NavLink>
   );
 }
@@ -79,8 +85,8 @@ function SidebarNavContent({ groups, basePath, unreadCount, collapsed }) {
           <div key={group.label} className="space-y-2">
             {!collapsed && (
               <h2
-                className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 transition-all duration-300 ease-out"
-                style={{ transitionDelay: `${groupIndex * 100}ms` }}
+                className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider transition-all duration-300 ease-out"
+                style={{ transitionDelay: `${groupIndex * 100}ms`, color: 'var(--fg-muted)' }}
               >
                 {group.label}
               </h2>
@@ -124,8 +130,12 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-[60] h-screen border-r border-border/40 bg-background/95 backdrop-blur-xl transition-all duration-300 ease-out shadow-2xl ${collapsed ? 'w-16' : 'w-64'
-        }`}
+      className="fixed left-0 top-0 z-[60] h-screen border-r backdrop-blur-xl transition-all duration-300 ease-out shadow-2xl"
+      style={{
+        width: collapsed ? '4rem' : '16rem',
+        backgroundColor: 'var(--sidebar-bg)',
+        borderColor: 'var(--sidebar-border)',
+      }}
       role="navigation"
       aria-label="Main sidebar"
       onMouseEnter={() => collapsed && setCollapsedHovered(true)}
@@ -134,8 +144,8 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Header/Logo Section */}
         <div
-          className={`flex h-16 shrink-0 items-center border-b border-border/40 transition-all duration-300 ${collapsed ? 'relative px-2' : 'justify-between px-4'
-            }`}
+          className="flex h-16 shrink-0 items-center border-b transition-all duration-300"
+          style={{ borderColor: 'var(--sidebar-border)', ...(collapsed ? { position: 'relative', paddingLeft: '0.5rem', paddingRight: '0.5rem' } : { justifyContent: 'space-between', paddingLeft: '1rem', paddingRight: '1rem' }) }}
         >
           {collapsed ? (
             <div className="relative flex flex-1 items-center justify-center min-w-0 min-h-[4rem]">
@@ -152,8 +162,7 @@ export function Sidebar() {
               </Link>
               <button
                 onClick={toggleCollapsed}
-                className={`absolute inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-md shadow-black/5 ring-1 ring-black/[0.04] backdrop-blur-md transition-all duration-200 hover:bg-accent hover:text-accent-foreground hover:shadow-lg hover:scale-105 hover:border-border active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 ${collapsedHovered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-                  }`}
+                className={`absolute inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--fg)] shadow-md backdrop-blur-md transition-all duration-200 hover:bg-[var(--accent)] hover:text-[var(--accent-fg)] hover:border-[var(--accent)] hover:shadow-lg hover:scale-105 active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)] ${collapsedHovered ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 title="Open sidebar"
                 aria-label="Open sidebar"
               >
@@ -164,21 +173,21 @@ export function Sidebar() {
             <>
               <Link
                 to={basePath}
-                className="group flex items-center gap-3 rounded-lg p-1 transition-all duration-200 hover:bg-accent/50"
+                className="group flex items-center gap-3 rounded-lg p-1 transition-all duration-200 hover:bg-[var(--muted)]"
                 title="Project Management"
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white shadow-lg transition-all duration-200 group-hover:scale-105">
                   <FolderKanban className="h-4 w-4" />
                 </div>
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="text-sm font-bold text-foreground leading-none">
+                  <span className="text-sm font-bold leading-none" style={{ color: 'var(--fg)' }}>
                     Project Management
                   </span>
                 </div>
               </Link>
               <button
                 onClick={toggleCollapsed}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-card text-foreground shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--fg)] shadow-sm backdrop-blur-sm transition-all duration-200 hover:bg-[var(--accent)] hover:text-[var(--accent-fg)] hover:border-[var(--accent)] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)]"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
               >

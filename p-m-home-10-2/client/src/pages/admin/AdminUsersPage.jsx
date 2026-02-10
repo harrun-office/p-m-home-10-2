@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Eye, X, User, Building2, ListTodo, Search, Users, UserCheck, UserX, Filter, CalendarClock, CheckCircle2, Plus, Edit, Trash2, ChevronDown } from 'lucide-react';
+import { Eye, X, User, Building2, ListTodo, Search, Users, UserCheck, UserX, Filter, CalendarClock, CheckCircle2, Plus, Edit, Trash2 } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore.jsx';
 import { getSession } from '../../store/sessionStore.js';
 import { countOpenTasksByUser, countProjectsByUser } from '../../utils/users.js';
@@ -12,8 +12,8 @@ import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import { Select } from '../../components/ui/Select.jsx';
 import { Card } from '../../components/ui/Card.jsx';
+import { IconButton } from '../../components/ui/IconButton.jsx';
 import { ResponsiveDataGrid } from '../../components/ui/DataCard.jsx';
-import { ActionMenu } from '../../components/ui/ActionMenu.jsx';
 
 function getInitial(name) {
   return (name || '?').charAt(0).toUpperCase();
@@ -139,7 +139,16 @@ export function AdminUsersPage() {
 
   function handleToggleActive(user) {
     if (user.id === session?.userId) return;
-    setUserActive(user.id, !user.isActive);
+
+    const nextActive = !user.isActive;
+    if (!nextActive) {
+      const ok = window.confirm(
+        `Deactivate ${user.name}? They will no longer appear as an active assignee, but their historical activity will remain.`
+      );
+      if (!ok) return;
+    }
+
+    setUserActive(user.id, nextActive);
   }
 
   function handleDeleteUser(user) {
@@ -158,7 +167,7 @@ export function AdminUsersPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading users...</p>
+          <p className="text-[var(--fg-muted)]">Loading users...</p>
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -217,8 +226,8 @@ export function AdminUsersPage() {
               <Icon className="w-6 h-6" aria-hidden />
             </span>
             <div>
-              <p className="text-2xl font-bold tabular-nums text-gray-900">{value}</p>
-              <p className="text-xs font-medium text-gray-600 uppercase tracking-wider">{label}</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--fg)]">{value}</p>
+              <p className="text-xs font-medium text-[var(--fg-muted)] uppercase tracking-wider">{label}</p>
             </div>
           </Card>
         ))}
@@ -238,13 +247,13 @@ export function AdminUsersPage() {
       {/* Search & filters */}
       <section aria-labelledby="filters-heading">
         <Card>
-          <h2 id="filters-heading" className="flex items-center gap-2 text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
+          <h2 id="filters-heading" className="flex items-center gap-2 text-sm font-semibold text-[var(--fg)] uppercase tracking-wider mb-4">
             <Filter className="w-4 h-4 text-[var(--fg-muted)]" aria-hidden />
             Search & filter
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="lg:col-span-2">
-              <label htmlFor="users-search" className="block text-xs font-medium text-gray-600 mb-1.5">
+              <label htmlFor="users-search" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                 Name, email or employee ID
               </label>
               <Input
@@ -257,7 +266,7 @@ export function AdminUsersPage() {
               />
             </div>
             <div>
-              <label htmlFor="users-dept" className="block text-xs font-medium text-gray-600 mb-1.5">
+              <label htmlFor="users-dept" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                 Department
               </label>
               <Select id="users-dept" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
@@ -268,7 +277,7 @@ export function AdminUsersPage() {
               </Select>
             </div>
             <div>
-              <label htmlFor="users-status" className="block text-xs font-medium text-gray-600 mb-1.5">
+              <label htmlFor="users-status" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
                 Status
               </label>
               <Select id="users-status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
@@ -278,7 +287,7 @@ export function AdminUsersPage() {
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="users-date-filter" className="block text-xs font-medium text-gray-600">
+              <label htmlFor="users-date-filter" className="block text-xs font-medium text-[var(--fg-muted)]">
                 Date range (Tasks & Projects)
               </label>
               <div className="flex flex-wrap items-center gap-2">
@@ -324,13 +333,13 @@ export function AdminUsersPage() {
       {/* Team members list */}
       <section aria-labelledby="team-list-heading" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="team-list-heading" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+          <h2 id="team-list-heading" className="flex items-center gap-2 text-lg font-semibold text-[var(--fg)]">
             <Users className="w-5 h-5 text-[var(--accent)] shrink-0" aria-hidden />
             {hasActiveFilters ? `Results (${filteredUsers.length})` : 'All team members'}
           </h2>
           <div className="flex items-center gap-3">
             {hasActiveFilters && (
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-[var(--fg-muted)]">
                 {filteredUsers.length} of {users.length} shown
               </span>
             )}
@@ -357,8 +366,8 @@ export function AdminUsersPage() {
                 width: '26%',
                 render: (user) => (
                   <div className="flex flex-col items-start justify-center gap-0.5 text-left min-w-0">
-                    <p className="font-medium text-gray-900 truncate w-full">{user.name || '—'}</p>
-                    <p className="text-xs text-gray-600 truncate w-full">{user.email || '—'}</p>
+                    <p className="font-medium text-[var(--fg)] truncate w-full">{user.name || '—'}</p>
+                    <p className="text-xs text-[var(--fg-muted)] truncate w-full">{user.email || '—'}</p>
                   </div>
                 )
               },
@@ -379,7 +388,7 @@ export function AdminUsersPage() {
                 align: 'center',
                 width: '10%',
                 render: (user) => (
-                  <span className="text-gray-900">{user.department || '—'}</span>
+                  <span className="text-[var(--fg)]">{user.department || '—'}</span>
                 )
               },
               {
@@ -410,40 +419,43 @@ export function AdminUsersPage() {
               {
                 key: 'actions',
                 label: 'Actions',
-                align: 'center',
+                align: 'right',
                 width: '10%',
                 render: (user) => {
                   const isCurrentUser = user.id === session.userId;
-                  const actions = [
-                    { id: 'view', label: 'View', icon: Eye, onClick: () => navigate(`/admin/users/${user.id}`) },
-                    { id: 'edit', label: 'Edit', icon: Edit, onClick: () => setEditingUser(user) },
-                    {
-                      id: 'toggle',
-                      label: user.isActive !== false ? 'Deactivate' : 'Activate',
-                      icon: user.isActive !== false ? UserX : UserCheck,
-                      onClick: () => handleToggleActive(user),
-                      disabled: isCurrentUser
-                    },
-                    { type: 'divider' },
-                    {
-                      id: 'delete',
-                      label: 'Delete',
-                      icon: Trash2,
-                      onClick: () => handleDeleteUser(user),
-                      destructive: true,
-                      disabled: isCurrentUser
-                    }
-                  ];
                   return (
-                    <div className="flex justify-center">
-                      <ActionMenu
-                        trigger={
-                          <Button variant="outline" size="sm" rightIcon={ChevronDown} className="min-w-[5.5rem]">
-                            Actions
-                          </Button>
-                        }
-                        actions={actions}
-                        disabled={false}
+                    <div className="flex items-center justify-end gap-1">
+                      <IconButton
+                        icon={Eye}
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`View ${user.name}`}
+                        onClick={() => navigate(`/admin/users/${user.id}`)}
+                      />
+                      <IconButton
+                        icon={Edit}
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Edit ${user.name}`}
+                        onClick={() => setEditingUser(user)}
+                      />
+                      <IconButton
+                        icon={user.isActive !== false ? UserX : UserCheck}
+                        variant="ghost"
+                        size="sm"
+                        aria-label={user.isActive !== false ? `Deactivate ${user.name}` : `Activate ${user.name}`}
+                        onClick={() => handleToggleActive(user)}
+                        disabled={isCurrentUser}
+                        className={user.isActive !== false ? 'text-[var(--warning)] hover:bg-[var(--warning-light)]' : 'text-[var(--success)] hover:bg-[var(--success-light)]'}
+                      />
+                      <IconButton
+                        icon={Trash2}
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Delete ${user.name}`}
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={isCurrentUser}
+                        className="text-[var(--danger)] hover:bg-[var(--danger-light)]"
                       />
                     </div>
                   );

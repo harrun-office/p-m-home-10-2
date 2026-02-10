@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import * as data from '../data/index.js';
+import { getSession } from './sessionStore.js';
 
 const initialState = {
   users: [],
@@ -52,22 +53,38 @@ export function DataStoreProvider({ children }) {
   }, [refresh]);
 
   const createProject = useCallback((payload) => {
-    data.projectRepo.create(payload);
+    const session = getSession();
+    data.projectRepo.create(payload, session?.userId);
     refresh();
   }, [refresh]);
 
   const updateProject = useCallback((id, patch) => {
-    data.projectRepo.update(id, patch);
+    const session = getSession();
+    data.projectRepo.update(id, patch, session?.userId);
     refresh();
   }, [refresh]);
 
-  const setProjectStatus = useCallback((id, status) => {
-    data.projectRepo.setStatus(id, status);
+  const setProjectStatus = useCallback((id, status, note) => {
+    const session = getSession();
+    data.projectRepo.setStatus(id, status, session?.userId, note);
     refresh();
   }, [refresh]);
 
   const assignMembers = useCallback((projectId, userIds) => {
-    data.projectRepo.assignMembers(projectId, userIds);
+    const session = getSession();
+    data.projectRepo.assignMembers(projectId, userIds, session?.userId);
+    refresh();
+  }, [refresh]);
+
+  const addProjectMilestone = useCallback((projectId, title, note) => {
+    const session = getSession();
+    data.projectRepo.addMilestone(projectId, title, session?.userId, note);
+    refresh();
+  }, [refresh]);
+
+  const recordProjectActivity = useCallback((projectId, event) => {
+    const session = getSession();
+    data.projectRepo.recordActivity(projectId, event, session?.userId);
     refresh();
   }, [refresh]);
 
@@ -97,7 +114,20 @@ export function DataStoreProvider({ children }) {
 
   const moveTaskStatus = useCallback((id, newStatus, session) => {
     const result = data.taskRepo.moveStatus(id, newStatus, session);
-    if (result.ok) refresh();
+    if (result.ok) {
+      if (newStatus === 'COMPLETED') {
+        const tasks = data.taskRepo.list();
+        const task = tasks.find((t) => t.id === id);
+        if (task?.projectId) {
+          data.projectRepo.recordActivity(
+            task.projectId,
+            { type: 'task_milestone', payload: { taskId: id, message: 'Task completed' } },
+            session?.userId
+          );
+        }
+      }
+      refresh();
+    }
     return result;
   }, [refresh]);
 
@@ -148,6 +178,8 @@ export function DataStoreProvider({ children }) {
     updateProject,
     setProjectStatus,
     assignMembers,
+    addProjectMilestone,
+    recordProjectActivity,
     deleteProject,
     createTask,
     updateTask,

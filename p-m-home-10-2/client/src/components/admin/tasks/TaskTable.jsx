@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { PriorityBadge } from './PriorityBadge.jsx';
 import { IconButton } from '../../ui/IconButton.jsx';
-import { ActionMenu } from '../../ui/ActionMenu.jsx';
 import { Eye, Pencil, Trash2, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 
 /**
@@ -64,15 +63,6 @@ export function TaskTable({
               const rowReadOnly = getTaskReadOnly ? getTaskReadOnly(task) : readOnly;
               const displayId = getTaskDisplayId ? getTaskDisplayId(task) : task.id;
               const allowDelete = canDelete && canDelete(task) && onDelete;
-              const optionsActions = [
-                { id: 'view', label: 'View in project', icon: Eye, onClick: () => onNavigateToProject && onNavigateToProject(task.projectId) },
-                { id: 'edit', label: 'Edit', icon: Pencil, onClick: () => onEdit && onEdit(task), disabled: rowReadOnly },
-                { type: 'divider' },
-                { id: 'todo', label: 'To Do', icon: Circle, onClick: () => onMoveStatus && onMoveStatus(task.id, 'TODO'), disabled: rowReadOnly },
-                { id: 'progress', label: 'In Progress', icon: Loader2, onClick: () => onMoveStatus && onMoveStatus(task.id, 'IN_PROGRESS'), disabled: rowReadOnly },
-                { id: 'completed', label: 'Completed', icon: CheckCircle2, onClick: () => onMoveStatus && onMoveStatus(task.id, 'COMPLETED'), disabled: rowReadOnly },
-                ...(allowDelete ? [{ type: 'divider' }, { id: 'delete', label: 'Delete', icon: Trash2, onClick: () => onDelete(task), destructive: true }] : []),
-              ];
               return (
                 <tr key={task.id} className="hover:bg-[var(--muted)]/50 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-[var(--fg-muted)] tabular-nums">{displayId}</td>
@@ -126,12 +116,55 @@ export function TaskTable({
                   <td className="px-4 py-3 text-right">
                     {!rowReadOnly ? (
                       <div className="flex items-center justify-end gap-1">
-                        <IconButton icon={Eye} variant="ghost" size="sm" aria-label={`View ${task.title}`} onClick={() => onNavigateToProject && onNavigateToProject(task.projectId)} />
-                        <IconButton icon={Pencil} variant="ghost" size="sm" aria-label={`Edit ${task.title}`} onClick={() => onEdit && onEdit(task)} />
-                        {canDelete && canDelete(task) && onDelete && (
-                          <IconButton icon={Trash2} variant="ghost" size="sm" aria-label={`Delete ${task.title}`} onClick={() => onDelete(task)} className="text-[var(--danger)] hover:bg-[var(--danger-light)]" />
+                        <IconButton
+                          icon={Eye}
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`View ${task.title} in project`}
+                          onClick={() => onNavigateToProject && onNavigateToProject(task.projectId)}
+                        />
+                        <IconButton
+                          icon={Pencil}
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Edit ${task.title}`}
+                          onClick={() => onEdit && onEdit(task)}
+                        />
+                        {!rowReadOnly && onMoveStatus && (
+                          <>
+                            <IconButton
+                              icon={Circle}
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Set ${task.title} to To Do`}
+                              onClick={() => onMoveStatus(task.id, 'TODO')}
+                            />
+                            <IconButton
+                              icon={Loader2}
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Set ${task.title} to In Progress`}
+                              onClick={() => onMoveStatus(task.id, 'IN_PROGRESS')}
+                            />
+                            <IconButton
+                              icon={CheckCircle2}
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`Mark ${task.title} as Completed`}
+                              onClick={() => onMoveStatus(task.id, 'COMPLETED')}
+                            />
+                          </>
                         )}
-                        <ActionMenu actions={optionsActions} />
+                        {allowDelete && (
+                          <IconButton
+                            icon={Trash2}
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Delete ${task.title}`}
+                            onClick={() => onDelete(task)}
+                            className="text-[var(--danger)] hover:bg-[var(--danger-light)]"
+                          />
+                        )}
                       </div>
                     ) : (
                       <span className="text-xs text-[var(--muted-fg)]">Read-only</span>

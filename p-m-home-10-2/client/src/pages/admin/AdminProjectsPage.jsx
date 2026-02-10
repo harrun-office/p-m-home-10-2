@@ -13,7 +13,6 @@ import { Input } from '../../components/ui/Input.jsx';
 import { Select } from '../../components/ui/Select.jsx';
 import { MotionPage } from '../../components/motion/MotionPage.jsx';
 import { Table, TableHeader, TableBody, TableRow, Th, Td } from '../../components/ui/Table.jsx';
-import { ActionMenu } from '../../components/ui/ActionMenu.jsx';
 import { todayKey, addDaysToLocalKey } from '../../utils/date.js';
 import {
   FolderKanban,
@@ -41,6 +40,13 @@ const PROJECT_KPIS = [
   { key: 'activeProjects', label: 'Active', icon: FolderOpen, accent: 'var(--success)', bg: 'var(--success-light)' },
   { key: 'onHoldProjects', label: 'On hold', icon: Pause, accent: 'var(--warning)', bg: 'var(--warning-light)' },
   { key: 'completedProjects', label: 'Done', icon: CheckCircle2, accent: 'var(--purple)', bg: 'var(--purple-light)' },
+];
+
+const STATUS_FILTERS = [
+  { value: '', label: 'All' },
+  { value: 'ACTIVE', label: 'Active', icon: FolderOpen },
+  { value: 'ON_HOLD', label: 'On Hold', icon: Pause },
+  { value: 'COMPLETED', label: 'Complete', icon: CheckCircle2 },
 ];
 
 /**
@@ -165,6 +171,29 @@ export function AdminProjectsPage() {
   }
 
   function handleStatusChange(projectId, newStatus) {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+
+    if (newStatus === 'ON_HOLD') {
+      const ok = window.confirm(
+        `Put "${project.name}" on hold? Tasks will remain visible, but the project will be marked as On Hold.`
+      );
+      if (!ok) {
+        setStatusChangeId(null);
+        return;
+      }
+    }
+
+    if (newStatus === 'COMPLETED') {
+      const ok = window.confirm(
+        `Mark "${project.name}" as completed? You can still view tasks, but the project will be read-only.`
+      );
+      if (!ok) {
+        setStatusChangeId(null);
+        return;
+      }
+    }
+
     setProjectStatus(projectId, newStatus);
     setStatusChangeId(null);
   }
@@ -296,6 +325,33 @@ export function AdminProjectsPage() {
             <Filter className="w-4 h-4 text-[var(--fg-muted)]" aria-hidden />
             Search & filter
           </h2>
+          {/* Status quick filters: All, Active, On Hold, Complete */}
+          <div className="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-[var(--border)]">
+            <span className="text-xs font-medium text-[var(--fg-muted)] mr-1">Show:</span>
+            {STATUS_FILTERS.map(({ value, label, icon: Icon }) => {
+              const isActive = statusFilter === value;
+              return (
+                <button
+                  key={value || 'all'}
+                  type="button"
+                  onClick={() => setStatusFilter(value)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-[var(--primary)] text-[var(--primary-fg)] shadow-sm'
+                      : 'bg-[var(--muted)] text-[var(--fg-muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]'
+                  }`}
+                  aria-pressed={isActive}
+                  aria-label={value ? `Show ${label} projects` : 'Show all projects'}
+                >
+                  {Icon && <Icon className="w-4 h-4 shrink-0" aria-hidden />}
+                  {label}
+                  <span className="text-xs opacity-90">
+                    ({value === 'ACTIVE' ? activeCount : value === 'ON_HOLD' ? onHoldCount : value === 'COMPLETED' ? completedCount : projects.length})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <div className="lg:col-span-2">
               <label htmlFor="projects-search" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
@@ -431,10 +487,14 @@ export function AdminProjectsPage() {
             title={projects.length === 0 ? 'No projects yet' : 'No results match your filters'}
             message={
               projects.length === 0
-                ? 'Create your first project to get started managing your team\'s work effectively.'
+                ? 'Create your first project, then add team members and tasks from the project page to start tracking work.'
                 : 'Try adjusting your search terms or clearing some filters to see more results.'
             }
-            actions={projects.length === 0 ? [{ label: 'Create Project', onClick: handleCreate }] : [{ label: 'Clear filters', onClick: clearFilters }]}
+            actions={
+              projects.length === 0
+                ? [{ label: 'Create Project', onClick: handleCreate }]
+                : [{ label: 'Clear filters', onClick: clearFilters }]
+            }
             icon={FolderKanban}
           />
         ) : (
@@ -476,16 +536,6 @@ export function AdminProjectsPage() {
                     .map((id) => users.find((u) => u.id === id)?.name)
                     .filter(Boolean);
                   const memberLabel = memberNames.length ? memberNames.slice(0, 2).join(', ') + (memberNames.length > 2 ? ` +${memberNames.length - 2}` : '') : '—';
-                  const optionsActions = [
-                    { id: 'view', label: 'View', icon: Eye, onClick: () => navigate(`/admin/projects/${project.id}`) },
-                    { id: 'edit', label: 'Edit', icon: Pencil, onClick: () => handleEdit(project), disabled: project.status === 'COMPLETED' || project.status === 'ON_HOLD' },
-                    { type: 'divider' },
-                    ...(project.status !== 'ACTIVE' ? [{ id: 'activate', label: 'Mark Active', icon: PlayCircle, onClick: () => handleStatusChange(project.id, 'ACTIVE') }] : []),
-                    ...(project.status !== 'ON_HOLD' ? [{ id: 'hold', label: 'Put on Hold', icon: PauseCircle, onClick: () => handleStatusChange(project.id, 'ON_HOLD') }] : []),
-                    ...(project.status !== 'COMPLETED' ? [{ id: 'complete', label: 'Mark Completed', icon: CheckCircle2, onClick: () => handleStatusChange(project.id, 'COMPLETED') }] : []),
-                    { type: 'divider' },
-                    { id: 'delete', label: 'Delete', icon: Trash2, onClick: () => handleDelete(project), destructive: true },
-                  ];
                   return (
                     <TableRow key={project.id}>
                       <Td>
@@ -511,9 +561,17 @@ export function AdminProjectsPage() {
                       <Td className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <IconButton icon={Eye} variant="ghost" size="sm" aria-label={`View ${project.name}`} onClick={() => navigate(`/admin/projects/${project.id}`)} />
-                          <IconButton icon={Pencil} variant="ghost" size="sm" aria-label={`Edit ${project.name}`} onClick={() => handleEdit(project)} />
+                          <IconButton icon={Pencil} variant="ghost" size="sm" aria-label={`Edit ${project.name}`} onClick={() => handleEdit(project)} disabled={project.status === 'COMPLETED' || project.status === 'ON_HOLD'} />
+                          {project.status === 'ON_HOLD' && (
+                            <IconButton icon={PlayCircle} variant="ghost" size="sm" aria-label={`Make ${project.name} active`} onClick={() => handleStatusChange(project.id, 'ACTIVE')} className="text-[var(--success)] hover:bg-[var(--success-light)]" />
+                          )}
+                          {project.status !== 'ON_HOLD' && (
+                            <IconButton icon={PauseCircle} variant="ghost" size="sm" aria-label={`Put ${project.name} on hold`} onClick={() => handleStatusChange(project.id, 'ON_HOLD')} className="text-[var(--fg-muted)] hover:text-[var(--fg)]" />
+                          )}
+                          {project.status !== 'COMPLETED' && (
+                            <IconButton icon={CheckCircle2} variant="ghost" size="sm" aria-label={`Mark ${project.name} completed`} onClick={() => handleStatusChange(project.id, 'COMPLETED')} className="text-[var(--fg-muted)] hover:text-[var(--fg)]" />
+                          )}
                           <IconButton icon={Trash2} variant="ghost" size="sm" aria-label={`Delete ${project.name}`} onClick={() => handleDelete(project)} className="text-[var(--danger)] hover:bg-[var(--danger-light)]" />
-                          <ActionMenu actions={optionsActions} />
                         </div>
                       </Td>
                     </TableRow>

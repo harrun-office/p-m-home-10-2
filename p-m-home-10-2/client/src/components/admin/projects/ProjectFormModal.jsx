@@ -105,11 +105,16 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
   const labelClass = 'block text-sm font-medium text-[var(--fg)]';
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6">
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-project-title"
+    >
       <div className="absolute inset-0 bg-[var(--backdrop)] backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-2xl)] flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-2xl)] flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-          <h2 className="text-lg font-semibold text-[var(--fg)]">Create Project</h2>
+          <h2 id="create-project-title" className="text-lg font-semibold text-[var(--fg)]">Create Project</h2>
           <button
             type="button"
             onClick={onClose}

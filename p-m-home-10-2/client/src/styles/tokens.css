@@ -161,6 +161,16 @@
   --header-border: var(--border);
   --header-shadow: 0 1px 0 0 var(--border), 0 6px 20px -12px rgb(0 0 0 / 0.12);
   --header-accent: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
+  /* Sidebar */
+  --sidebar-bg: var(--surface);
+  --sidebar-border: var(--border);
+  /* Sidebar nav items */
+  --nav-item-fg: var(--fg-muted);
+  --nav-item-hover-bg: var(--accent-light);
+  --nav-item-hover-fg: var(--accent-muted-fg);
+  --nav-item-active-bg: var(--accent-light);
+  --nav-item-active-fg: var(--primary);
+  --nav-item-active-border: var(--primary);
 }
 
 [data-theme="dark"] {
@@ -176,31 +186,31 @@
   --accent-fg: #ffffff;
   --accent-muted: #1e3a8a;
   --accent-muted-fg: #93c5fd;
-  --accent-light: #1e3a8a;
+  --accent-light: rgba(59, 130, 246, 0.12);
 
-  --bg: #0a0a0a;
+  --bg: #0f0f0f;
   --surface: #171717;
-  --elevated: #262626;
-  --card: #171717;
+  --elevated: #1e1e1e;
+  --card: #1a1a1a;
   --card-fg: #fafafa;
-  --card-tint: #262626;
+  --card-tint: #1e1e1e;
 
-  --fg: #fafafa;
-  --fg-secondary: #a3a3a3;
-  --fg-muted: #737373;
+  --fg: #f4f4f5;
+  --fg-secondary: #a1a1aa;
+  --fg-muted: #94a3b8;
   --fg-inverse: #171717;
 
-  --muted: #262626;
-  --muted-fg: #737373;
-  --muted-tint: #262626;
-  --border: #404040;
-  --border-focus: #525252;
-  --border-subtle: #262626;
-  --divider: #404040;
+  --muted: #27272a;
+  --muted-fg: #94a3b8;
+  --muted-tint: #1e1e1e;
+  --border: #3f3f46;
+  --border-focus: #52525b;
+  --border-subtle: #27272a;
+  --divider: #3f3f46;
 
   --ring: #3b82f6;
-  --ring-offset: #171717;
-  --hover: #262626;
+  --ring-offset: #18181b;
+  --hover: #27272a;
   --active: #404040;
   --hover-tint: #1e3a8a;
 
@@ -263,6 +273,16 @@
   --focus-ring-offset: 2px;
 
   --panel-shadow: 0 4px 24px -4px rgb(0 0 0 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.06);
-  --header-bg-glass: rgba(23, 23, 23, 0.82);
-  --header-shadow: 0 1px 0 0 var(--border), 0 6px 22px -12px rgb(0 0 0 / 0.22);
+  --header-bg: #18181b;
+  --header-bg-glass: rgba(24, 24, 27, 0.88);
+  --header-border: #27272a;
+  --header-shadow: 0 1px 0 0 var(--border), 0 4px 24px -8px rgb(0 0 0 / 0.4);
+  --sidebar-bg: #18181b;
+  --sidebar-border: #27272a;
+  --nav-item-fg: #94a3b8;
+  --nav-item-hover-bg: rgba(59, 130, 246, 0.1);
+  --nav-item-hover-fg: #93c5fd;
+  --nav-item-active-bg: rgba(59, 130, 246, 0.15);
+  --nav-item-active-fg: #60a5fa;
+  --nav-item-active-border: #3b82f6;
 }
