@@ -20,20 +20,8 @@ import { Button } from '../../ui/Button.jsx';
 import { Input } from '../../ui/Input.jsx';
 
 const STATUS_LABELS = { ACTIVE: 'Active', ON_HOLD: 'On Hold', COMPLETED: 'Completed' };
-const EVENT_TYPES = [
-  { value: '', label: 'All' },
-  { value: 'status_change', label: 'Status' },
-  { value: 'date_change', label: 'Dates' },
-  { value: 'team', label: 'Team' },
-  { value: 'milestone', label: 'Milestones' },
-  { value: 'task_milestone', label: 'Tasks' },
-];
-const DATE_RANGES = [
-  { value: '', label: 'All time' },
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-];
-const INITIAL_VISIBLE = 10;
+const INITIAL_VISIBLE = 25;
+const SHOW_MORE_STEP = 15;
 
 function formatDateTime(iso) {
   if (!iso) return '—';
@@ -77,11 +65,13 @@ function durationBetween(at1, at2) {
   return `${Math.round(months / 12)} year${Math.round(months / 12) !== 1 ? 's' : ''}`;
 }
 
-export function ProjectTimeline({ project, users = [], tasks = [], addProjectMilestone, isReadOnly }) {
-  const [filterType, setFilterType] = useState('');
-  const [dateRange, setDateRange] = useState('');
+/**
+ * @param {{ project: object, users?: object[], tasks?: object[], addProjectMilestone?: function, isReadOnly?: boolean, projectsBasePath?: string }}
+ * projectsBasePath: '/app' for employee view (links to /app/projects/:id, user names not linked); default '/admin'
+ */
+export function ProjectTimeline({ project, users = [], tasks = [], addProjectMilestone, isReadOnly, projectsBasePath = '/admin' }) {
+  const isEmployeeView = projectsBasePath === '/app';
   const [showRelative, setShowRelative] = useState(true);
-  const [compact, setCompact] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [milestoneTitle, setMilestoneTitle] = useState('');
   const [milestoneNote, setMilestoneNote] = useState('');
@@ -135,32 +125,14 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
     return out;
   }, [project]);
 
-  const filteredEvents = useMemo(() => {
-    let list = allEvents;
-    if (filterType) {
-      if (filterType === 'team') {
-        list = list.filter((e) => e.type === 'member_added' || e.type === 'member_removed');
-      } else {
-        list = list.filter((e) => e.type === filterType);
-      }
-    }
-    if (dateRange) {
-      const days = Number(dateRange);
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      list = list.filter((e) => new Date(e.at) >= since);
-    }
-    return list;
-  }, [allEvents, filterType, dateRange]);
-
   const visibleEvents = useMemo(
-    () => filteredEvents.slice(0, visibleCount),
-    [filteredEvents, visibleCount]
+    () => allEvents.slice(0, visibleCount),
+    [allEvents, visibleCount]
   );
-  const hasMore = filteredEvents.length > visibleCount;
+  const hasMore = allEvents.length > visibleCount;
 
   const exportText = useMemo(() => {
-    return filteredEvents
+    return allEvents
       .map((e) => {
         const date = formatDateTime(e.at);
         const who = e.userId ? (userById.get(e.userId)?.name || 'Someone') : '';
@@ -171,7 +143,7 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
         return line;
       })
       .join('\n');
-  }, [filteredEvents, userById]);
+  }, [allEvents, userById]);
 
   function eventLabel(e) {
     if (e.type === 'status_change') {
@@ -239,23 +211,18 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
             </div>
             <div>
               <h3 className="text-lg font-semibold text-[var(--fg)]">Project timeline</h3>
-              <p className="text-sm text-[var(--fg-muted)]">Status changes, team updates, and key dates</p>
+              <p className="text-sm text-[var(--fg-muted)]">
+                Chronological history: status changes, milestones, team updates, and completed tasks.
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setShowRelative(!showRelative)}
-              className="text-xs px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--fg-muted)] hover:bg-[var(--muted)]"
+              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--fg-muted)] hover:bg-[var(--muted)] hover:text-[var(--fg)]"
             >
-              {showRelative ? 'Relative' : 'Exact date'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCompact(!compact)}
-              className="text-xs px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--fg-muted)] hover:bg-[var(--muted)]"
-            >
-              {compact ? 'Compact' : 'Full'}
+              {showRelative ? 'Relative time' : 'Exact date'}
             </button>
             <Button variant="outline" size="sm" leftIcon={Copy} onClick={handleCopyExport} disabled={!exportText}>
               Copy
@@ -266,34 +233,6 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-[var(--border)]">
-          <span className="text-xs font-medium text-[var(--fg-muted)]">Filter:</span>
-          <div className="flex flex-wrap gap-2">
-            {EVENT_TYPES.map((t) => (
-              <button
-                key={t.value || 'all'}
-                type="button"
-                onClick={() => setFilterType(t.value)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg ${
-                  filterType === t.value ? 'bg-[var(--primary)] text-[var(--primary-fg)]' : 'bg-[var(--muted)] text-[var(--fg-muted)] hover:bg-[var(--hover)]'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="text-xs px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--fg)]"
-          >
-            {DATE_RANGES.map((r) => (
-              <option key={r.value || 'all'} value={r.value}>{r.label}</option>
-            ))}
-          </select>
         </div>
 
         {/* Add milestone inline */}
@@ -326,7 +265,7 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
           <div className="absolute left-5 top-2 bottom-2 w-0.5 rounded-full bg-[var(--border)]" aria-hidden />
           <ul className="space-y-0">
             {visibleEvents.map((e, index) => {
-              const isLast = index === visibleEvents.length - 1 && index === filteredEvents.length - 1;
+              const isLast = index === visibleEvents.length - 1 && index === allEvents.length - 1;
               const prevAt = index > 0 ? visibleEvents[index - 1].at : null;
               const duration = durationBetween(prevAt, e.at);
               const config = eventConfig(e);
@@ -374,13 +313,13 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
                       {duration && <span className="text-xs text-[var(--fg-muted)]">· {duration} since previous</span>}
                       {userName && e.type !== 'member_added' && e.type !== 'member_removed' && (
                         <span className="text-xs text-[var(--fg-muted)]">
-                          by <Link to={`/admin/users/${e.userId}`} className="text-[var(--primary)] hover:underline">{userName}</Link>
+                          by {isEmployeeView ? <span>{userName}</span> : <Link to={`/admin/users/${e.userId}`} className="text-[var(--primary)] hover:underline">{userName}</Link>}
                         </span>
                       )}
                     </div>
                     {task && e.type === 'task_milestone' && (
                       <Link
-                        to={`/admin/projects/${project.id}`}
+                        to={`${projectsBasePath}/projects/${project.id}`}
                         state={{ tab: 'tasks' }}
                         className="text-xs text-[var(--primary)] hover:underline mt-1 inline-block"
                       >
@@ -399,14 +338,14 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setVisibleCount((c) => c + INITIAL_VISIBLE)}
+              onClick={() => setVisibleCount((c) => c + SHOW_MORE_STEP)}
               rightIcon={ChevronDown}
             >
-              Show more
+              Show more ({allEvents.length - visibleCount} more)
             </Button>
           </div>
         )}
-        {filteredEvents.length > visibleCount && visibleCount > INITIAL_VISIBLE && (
+        {allEvents.length > visibleCount && visibleCount > INITIAL_VISIBLE && (
           <div className="mt-2 flex justify-center">
             <button
               type="button"
@@ -418,11 +357,11 @@ export function ProjectTimeline({ project, users = [], tasks = [], addProjectMil
           </div>
         )}
 
-        {filteredEvents.length === 0 && (
+        {allEvents.length === 0 && (
           <div className="py-12 text-center">
             <p className="text-[var(--fg-muted)] mb-2">No timeline events yet.</p>
             <p className="text-sm text-[var(--fg-muted)] max-w-md mx-auto">
-              Timeline will show status changes, team updates, and key dates as they happen. Change the project status or add members to see the first events.
+              Add a milestone above, or change project status and team in the project settings. Completed tasks will appear here automatically.
             </p>
           </div>
         )}

@@ -36,6 +36,7 @@ export function EmployeeNotificationsPage() {
         onMarkAllRead={handleMarkAllRead}
         emptyMessage="No notifications."
         showFilters
+        projectsBasePath="/app"
       />
     </MotionPage>
   );

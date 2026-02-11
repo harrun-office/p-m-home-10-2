@@ -16,12 +16,38 @@ import { Select } from '../../components/ui/Select.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { Avatar } from '../../components/ui/Avatar.jsx';
 import { daysUntil } from '../../utils/date.js';
-import { CalendarDays, Clock, Users, CheckCircle2, AlertCircle, Target, Building2, Timer, UserPlus, X, Search, Check, User } from 'lucide-react';
+import { CalendarDays, Clock, Users, CheckCircle2, AlertCircle, Target, Building2, Timer, UserPlus, X, Search, Check, User, Paperclip, FileText, Image, ExternalLink, Pencil } from 'lucide-react';
 
 const TAB_OVERVIEW = 'overview';
 const TAB_TIMELINE = 'timeline';
 const TAB_MEMBERS = 'members';
 const TAB_TASKS = 'tasks';
+const TAB_ATTACHMENTS = 'attachments';
+
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|bmp|svg)(\?|$)/i;
+function isImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (IMAGE_EXTENSIONS.test(trimmed)) return true;
+  if (/^https?:\/\//i.test(trimmed) && /(picsum|unsplash|imgur|placeholder)/i.test(trimmed)) return true;
+  return false;
+}
+function isUrl(str) {
+  return typeof str === 'string' && /^https?:\/\//i.test(str.trim());
+}
+function getFileName(item) {
+  if (!item || typeof item !== 'string') return 'Attachment';
+  const trimmed = item.trim();
+  if (isUrl(trimmed)) {
+    try {
+      const name = new URL(trimmed).pathname.split('/').filter(Boolean).pop() || 'Link';
+      return decodeURIComponent(name);
+    } catch {
+      return 'Link';
+    }
+  }
+  return trimmed || 'File';
+}
 
 const VIEW_KANBAN = 'kanban';
 const VIEW_TABLE = 'table';
@@ -56,7 +82,7 @@ export function AdminProjectDetailPage() {
 
   useEffect(() => {
     const tab = location.state?.tab;
-    if (tab && [TAB_OVERVIEW, TAB_TIMELINE, TAB_MEMBERS, TAB_TASKS].includes(tab)) {
+    if (tab && [TAB_OVERVIEW, TAB_TIMELINE, TAB_MEMBERS, TAB_TASKS, TAB_ATTACHMENTS].includes(tab)) {
       setActiveTab(tab);
     }
   }, [location.state?.tab]);
@@ -221,16 +247,12 @@ export function AdminProjectDetailPage() {
     { id: TAB_TIMELINE, label: 'Timeline' },
     { id: TAB_MEMBERS, label: 'Members' },
     { id: TAB_TASKS, label: 'Tasks' },
+    { id: TAB_ATTACHMENTS, label: 'Attachments' },
   ];
 
   return (
     <div className="max-w-[var(--content-max)]">
       <Link to="/admin/projects" className="text-sm text-[var(--primary)] hover:text-[var(--primary-hover)] hover:underline mb-4 inline-block transition-colors">← Back to Projects</Link>
-
-      <div className="flex flex-wrap gap-4 text-sm text-[var(--fg-muted)] mb-6">
-        <span>Start: {project.startDate ? project.startDate.slice(0, 10) : '—'}</span>
-        <span>End: {project.endDate ? project.endDate.slice(0, 10) : '—'}</span>
-      </div>
 
       <nav className="border-b border-[var(--border)] mb-4">
         <ul className="flex gap-4">
@@ -277,6 +299,11 @@ export function AdminProjectDetailPage() {
                   </div>
                 </div>
               </div>
+              {!isReadOnly && (
+                <Button variant="outline" size="sm" leftIcon={Pencil} onClick={() => setModalOpen(true)} aria-label="Edit project">
+                  Edit project
+                </Button>
+              )}
             </div>
           </Card>
 
@@ -464,6 +491,104 @@ export function AdminProjectDetailPage() {
                 No members assigned yet. Use &quot;Add members to this project&quot; to choose existing employees from your team list.
               </p>
             </Card>
+          )}
+        </div>
+      )}
+
+      {activeTab === TAB_ATTACHMENTS && project && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--fg)] mb-1 flex items-center gap-2">
+              <Paperclip className="w-5 h-5 text-[var(--accent)]" />
+              Project attachments
+            </h2>
+            <p className="text-sm text-[var(--fg-muted)]">
+              Images, documents, and other files linked to this project.
+            </p>
+          </div>
+
+          {(!project.attachments || project.attachments.length === 0) ? (
+            <Card>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--muted)] flex items-center justify-center mb-4">
+                  <Paperclip className="w-7 h-7 text-[var(--fg-muted)]" />
+                </div>
+                <p className="text-[var(--fg)] font-medium mb-1">No attachments yet</p>
+                <p className="text-sm text-[var(--fg-muted)] max-w-sm">
+                  Add images, PDFs, or other files to this project to see them here.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {(project.attachments || []).map((item, index) => {
+                const url = typeof item === 'string' && item.trim().startsWith('http') ? item.trim() : null;
+                const isImage = url && isImageUrl(item);
+                const name = getFileName(item);
+
+                if (isImage) {
+                  return (
+                    <Card key={`att-${index}`} className="overflow-hidden p-0">
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block group"
+                        aria-label={`View image: ${name}`}
+                      >
+                        <div className="aspect-video bg-[var(--muted)] relative overflow-hidden">
+                          <img
+                            src={url}
+                            alt={name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden absolute inset-0 flex items-center justify-center bg-[var(--muted)]">
+                            <Image className="w-10 h-10 text-[var(--fg-muted)]" />
+                          </div>
+                        </div>
+                        <div className="p-3 border-t border-[var(--border)]">
+                          <span className="text-sm font-medium text-[var(--fg)] truncate block">{name}</span>
+                          <span className="text-xs text-[var(--fg-muted)] inline-flex items-center gap-1 mt-1">
+                            <ExternalLink className="w-3 h-3" /> Open
+                          </span>
+                        </div>
+                      </a>
+                    </Card>
+                  );
+                }
+
+                return (
+                  <Card key={`att-${index}`} className="flex flex-col">
+                    <div className="flex items-start gap-3 p-4">
+                      <div className="w-12 h-12 rounded-xl bg-[var(--accent-light)] flex items-center justify-center shrink-0">
+                        <FileText className="w-6 h-6 text-[var(--accent)]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-[var(--fg)] truncate" title={name}>{name}</p>
+                        <p className="text-xs text-[var(--fg-muted)] mt-0.5">
+                          {url ? 'Link' : 'File'}
+                        </p>
+                        {url && (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-2 text-xs text-[var(--primary)] hover:underline"
+                          >
+                            <ExternalLink className="w-3 h-3" /> Open link
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

@@ -55,7 +55,7 @@ export function markAllRead(userId) {
 
 /**
  * @param {string} userId
- * @param {{ type: string, message: string }} notification
+ * @param {{ type: string, message: string, projectId?: string }} notification
  * @returns {import('../../types/models.js').Notification}
  */
 export function createForUser(userId, notification) {
@@ -68,6 +68,7 @@ export function createForUser(userId, notification) {
     message: notification.message,
     createdAt: now,
     read: false,
+    ...(notification.projectId != null && { projectId: notification.projectId }),
   };
   list.push(item);
   save(STORAGE_KEYS.NOTIFICATIONS, list);

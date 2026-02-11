@@ -11,10 +11,11 @@ import { Input } from '../../components/ui/Input.jsx';
 import { KanbanBoard } from '../../components/admin/tasks/KanbanBoard.jsx';
 import { TaskTable } from '../../components/admin/tasks/TaskTable.jsx';
 import { TaskModal } from '../../components/admin/tasks/TaskModal.jsx';
-import { LayoutGrid, List, Filter } from 'lucide-react';
+import { LayoutGrid, List, Filter, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const VIEW_KANBAN = 'kanban';
 const VIEW_TABLE = 'table';
+const TASK_PAGE_SIZE_OPTIONS = [10, 50, 100, 200, 0];
 
 /**
  * Employee tasks: only tasks assigneeId === session.userId.
@@ -40,6 +41,8 @@ export function EmployeeTasksPage() {
   const [modalMode, setModalMode] = useState('create');
   const [editingTask, setEditingTask] = useState(null);
   const [assigneeNotifyMessage, setAssigneeNotifyMessage] = useState('');
+  const [tasksPageSize, setTasksPageSize] = useState(10);
+  const [tasksCurrentPage, setTasksCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!session) navigate('/login', { replace: true });
@@ -86,6 +89,21 @@ export function EmployeeTasksPage() {
     }
     return list;
   }, [myTasks, filterProject, filterStatus, filterPriority, filterDateStart, filterDateEnd]);
+
+  useEffect(() => {
+    setTasksCurrentPage(1);
+  }, [filterProject, filterStatus, filterPriority, filterDateStart, filterDateEnd, tasksPageSize]);
+
+  const sortedTasks = useMemo(
+    () => [...filteredTasks].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')),
+    [filteredTasks]
+  );
+  const totalTasks = sortedTasks.length;
+  const effectivePageSize = tasksPageSize === 0 ? totalTasks : Math.max(1, Number(tasksPageSize) || 10);
+  const totalPages = Math.max(1, effectivePageSize >= totalTasks ? 1 : Math.ceil(totalTasks / effectivePageSize));
+  const clampedPage = Math.min(Math.max(1, tasksCurrentPage), totalPages);
+  const startIndex = (clampedPage - 1) * effectivePageSize;
+  const displayedTasks = sortedTasks.slice(startIndex, startIndex + effectivePageSize);
 
   const getTaskReadOnly = useMemo(() => {
     const projectMap = new Map(projects.map((p) => [p.id, p]));
@@ -136,43 +154,57 @@ export function EmployeeTasksPage() {
         </div>
       )}
 
-      {/* View toggle + filters — design tokens for light and dark mode */}
+      {/* View toggle + filters — aligned grid layout */}
       <Card>
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--fg)] uppercase tracking-wider mb-4">
-          <Filter className="w-4 h-4 text-[var(--fg-muted)]" aria-hidden />
-          View & filters
-        </h2>
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-[var(--fg)]">View:</span>
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--fg)] uppercase tracking-wider">
+            <Filter className="w-4 h-4 text-[var(--fg-muted)]" aria-hidden />
+            View & filters
+          </h2>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleCreateTask}
+            className="inline-flex items-center gap-2"
+            aria-label="Create task"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Create Task</span>
+          </Button>
+        </div>
+        <div className="space-y-6">
+          {/* View row */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-[var(--fg)] shrink-0">View:</span>
             <div className="flex rounded-[var(--radius)] border-2 border-[var(--border)] overflow-hidden bg-[var(--muted)]/50">
               <button
                 type="button"
                 onClick={() => setView(VIEW_KANBAN)}
-                className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
+                aria-label="View as Kanban"
+                className={`inline-flex items-center justify-center p-2.5 text-sm font-medium transition-colors ${
                   view === VIEW_KANBAN
                     ? 'bg-[var(--primary)] text-[var(--primary-fg)]'
                     : 'bg-transparent text-[var(--fg)] hover:bg-[var(--hover)]'
                 }`}
               >
-                <LayoutGrid className="w-4 h-4 shrink-0" aria-hidden />
-                Kanban
+                <LayoutGrid className="w-4 h-4 shrink-0" />
               </button>
               <button
                 type="button"
                 onClick={() => setView(VIEW_TABLE)}
-                className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors ${
+                aria-label="View as Table"
+                className={`inline-flex items-center justify-center p-2.5 text-sm font-medium transition-colors ${
                   view === VIEW_TABLE
                     ? 'bg-[var(--primary)] text-[var(--primary-fg)]'
                     : 'bg-transparent text-[var(--fg)] hover:bg-[var(--hover)]'
                 }`}
               >
-                <List className="w-4 h-4 shrink-0" aria-hidden />
-                Table
+                <List className="w-4 h-4 shrink-0" />
               </button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-4 sm:gap-6">
+          {/* Filters row — grid so labels and controls align */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="filter-project" className="text-xs font-medium text-[var(--fg-muted)]">
                 Project
@@ -181,7 +213,7 @@ export function EmployeeTasksPage() {
                 id="filter-project"
                 value={filterProject}
                 onChange={(e) => setFilterProject(e.target.value)}
-                className="min-w-[160px]"
+                className="w-full min-w-0"
               >
                 <option value="">All</option>
                 {myProjects.map((p) => (
@@ -197,7 +229,7 @@ export function EmployeeTasksPage() {
                 id="filter-status"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="min-w-[140px]"
+                className="w-full min-w-0"
               >
                 <option value="">All</option>
                 <option value="TODO">To Do</option>
@@ -213,7 +245,7 @@ export function EmployeeTasksPage() {
                 id="filter-priority"
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
-                className="min-w-[120px]"
+                className="w-full min-w-0"
               >
                 <option value="">All</option>
                 <option value="HIGH">High</option>
@@ -221,54 +253,103 @@ export function EmployeeTasksPage() {
                 <option value="LOW">Low</option>
               </Select>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-[var(--fg-muted)]">
-                Assigned date
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  type="date"
-                  value={filterDateStart}
-                  onChange={(e) => setFilterDateStart(e.target.value)}
-                  className="min-w-[140px]"
-                  aria-label="Filter from date"
-                />
-                <span className="text-[var(--fg-muted)] text-xs">to</span>
-                <Input
-                  type="date"
-                  value={filterDateEnd}
-                  onChange={(e) => setFilterDateEnd(e.target.value)}
-                  className="min-w-[140px]"
-                  aria-label="Filter to date"
-                />
-                <Button
-                  variant={filterDateStart === todayKey() && filterDateEnd === todayKey() ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    const today = todayKey();
-                    setFilterDateStart(today);
-                    setFilterDateEnd(today);
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  Today
-                </Button>
-                <Button
-                  variant={!filterDateStart && !filterDateEnd ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setFilterDateStart('');
-                    setFilterDateEnd('');
-                  }}
-                  className="whitespace-nowrap"
-                >
-                  Show all
-                </Button>
-              </div>
+          </div>
+          {/* Assigned date — own row so it doesn't collide with dropdowns */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-[var(--fg-muted)]">Assigned date</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                type="date"
+                value={filterDateStart}
+                onChange={(e) => setFilterDateStart(e.target.value)}
+                className="min-w-[130px]"
+                aria-label="Filter from date"
+              />
+              <span className="text-[var(--fg-muted)] text-xs shrink-0">to</span>
+              <Input
+                type="date"
+                value={filterDateEnd}
+                onChange={(e) => setFilterDateEnd(e.target.value)}
+                className="min-w-[130px]"
+                aria-label="Filter to date"
+              />
+              <Button
+                variant={filterDateStart === todayKey() && filterDateEnd === todayKey() ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  const today = todayKey();
+                  setFilterDateStart(today);
+                  setFilterDateEnd(today);
+                }}
+                className="shrink-0 whitespace-nowrap"
+              >
+                Today
+              </Button>
+              <Button
+                variant={!filterDateStart && !filterDateEnd ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setFilterDateStart('');
+                  setFilterDateEnd('');
+                }}
+                className="shrink-0 whitespace-nowrap"
+              >
+                Show all
+              </Button>
             </div>
           </div>
         </div>
       </Card>
+
+      {filteredTasks.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-medium text-[var(--fg-muted)]">Tasks per page:</span>
+            <div className="flex items-center gap-1">
+              {TASK_PAGE_SIZE_OPTIONS.map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setTasksPageSize(size)}
+                  className={`min-w-[2.5rem] px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    tasksPageSize === size ? 'bg-[var(--accent)] text-[var(--accent-fg)]' : 'bg-[var(--muted)] text-[var(--fg)] hover:bg-[var(--border)]'
+                  }`}
+                >
+                  {size === 0 ? 'All' : size}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[var(--fg-muted)]">
+              Page {clampedPage} of {totalPages}
+              {effectivePageSize < totalTasks && (
+                <span className="ml-1">({startIndex + 1}–{Math.min(startIndex + effectivePageSize, totalTasks)} of {totalTasks})</span>
+              )}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setTasksCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={clampedPage <= 1}
+                className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTasksCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={clampedPage >= totalPages}
+                className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {filteredTasks.length === 0 ? (
         <EmptyState
@@ -289,7 +370,7 @@ export function EmployeeTasksPage() {
         />
       ) : view === VIEW_KANBAN ? (
         <KanbanBoard
-          tasks={filteredTasks}
+          tasks={displayedTasks}
           users={users}
           onMoveStatus={handleMoveStatus}
           onEdit={handleEditTask}
@@ -299,7 +380,7 @@ export function EmployeeTasksPage() {
         />
       ) : (
         <TaskTable
-          tasks={filteredTasks}
+          tasks={displayedTasks}
           users={users}
           projects={projects}
           onEdit={handleEditTask}

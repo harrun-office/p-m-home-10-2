@@ -20,9 +20,12 @@ import { EmployeeProjectsPage } from './pages/employee/EmployeeProjectsPage.jsx'
 import { EmployeeProjectDetailPage } from './pages/employee/EmployeeProjectDetailPage.jsx';
 import { EmployeeNotificationsPage } from './pages/employee/EmployeeNotificationsPage.jsx';
 import { EmployeeProfilePage } from './pages/employee/EmployeeProfilePage.jsx';
+import { useDataStore } from './store/dataStore.jsx';
 import './App.css';
 
 function App() {
+  const { error, retry, loading } = useDataStore();
+
   return (
     <ThemeProvider>
       <SidebarProvider>
@@ -30,6 +33,19 @@ function App() {
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
+      {loading && (
+        <div className="px-4 py-2 text-sm text-[var(--fg-muted)] bg-[var(--muted)]" role="status">
+          Loading…
+        </div>
+      )}
+      {error && (
+        <div className="px-4 py-2 text-sm bg-[var(--danger-light)] text-[var(--danger-muted-fg)] flex items-center justify-between gap-4" role="alert">
+          <span>Error loading data. {error}</span>
+          <button type="button" onClick={retry} className="px-2 py-1 rounded border border-[var(--danger)] text-[var(--danger)] hover:bg-[var(--danger-muted)] text-xs font-medium">
+            Retry
+          </button>
+        </div>
+      )}
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />

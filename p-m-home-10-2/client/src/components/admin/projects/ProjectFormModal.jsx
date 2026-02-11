@@ -6,11 +6,13 @@ import { Button } from '../../ui/Button.jsx';
 import { Input } from '../../ui/Input.jsx';
 
 /**
- * Create project modal — same size, design and layout as UserFormModal.
+ * Create / Edit project modal — same layout for both.
  * Fields: project name, description, start date, end date, attachments, adding employees.
+ * Pass optional `project` to edit; omit for create.
  */
-export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
-  const { state, createProject } = useDataStore();
+export function ProjectFormModal({ isOpen, onClose, onSuccess, project: editingProject }) {
+  const { state, createProject, updateProject, assignMembers } = useDataStore();
+  const isEdit = !!editingProject;
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -18,7 +20,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
     endDate: '',
   });
   const [selectedUserIds, setSelectedUserIds] = useState([]);
-  const [attachments, setAttachments] = useState([]);
+  const [attachmentUrls, setAttachmentUrls] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,12 +35,23 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
   useEffect(() => {
     if (!isOpen) return;
     const today = new Date().toISOString().slice(0, 10);
-    setFormData({ name: '', description: '', startDate: today, endDate: today });
-    setSelectedUserIds([]);
-    setAttachments([]);
+    if (isEdit && editingProject) {
+      setFormData({
+        name: editingProject.name ?? '',
+        description: editingProject.description ?? '',
+        startDate: editingProject.startDate ? editingProject.startDate.slice(0, 10) : today,
+        endDate: editingProject.endDate ? editingProject.endDate.slice(0, 10) : today,
+      });
+      setSelectedUserIds(Array.isArray(editingProject.assignedUserIds) ? [...editingProject.assignedUserIds] : []);
+      setAttachmentUrls(Array.isArray(editingProject.attachments) ? editingProject.attachments.join('\n') : '');
+    } else {
+      setFormData({ name: '', description: '', startDate: today, endDate: today });
+      setSelectedUserIds([]);
+      setAttachmentUrls('');
+    }
     setSearchQuery('');
     setErrors({});
-  }, [isOpen]);
+  }, [isOpen, isEdit, editingProject]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -70,13 +83,29 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
     try {
       const startISO = formData.startDate ? `${formData.startDate}T00:00:00.000Z` : '';
       const endISO = formData.endDate ? `${formData.endDate}T00:00:00.000Z` : '';
-      createProject({
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        startDate: startISO,
-        endDate: endISO,
-        assignedUserIds: selectedUserIds,
-      });
+      const attachmentList = (attachmentUrls || '')
+        .split(/\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (isEdit && editingProject) {
+        updateProject(editingProject.id, {
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          startDate: startISO,
+          endDate: endISO,
+          attachments: attachmentList,
+        });
+        assignMembers(editingProject.id, selectedUserIds);
+      } else {
+        createProject({
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          startDate: startISO,
+          endDate: endISO,
+          assignedUserIds: selectedUserIds,
+          attachments: attachmentList,
+        });
+      }
       onSuccess?.();
       onClose();
     } finally {
@@ -88,15 +117,6 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
     setSelectedUserIds((prev) =>
       prev.includes(id) ? prev.filter((u) => u !== id) : [...prev, id]
     );
-  }
-
-  function handleFileChange(e) {
-    const files = Array.from(e.target.files || []);
-    setAttachments((prev) => [...prev, ...files]);
-  }
-
-  function removeAttachment(index) {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
   }
 
   if (!isOpen) return null;
@@ -114,7 +134,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
       <div className="absolute inset-0 bg-[var(--backdrop)] backdrop-blur-sm" onClick={onClose} aria-hidden />
       <div className="relative w-full max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-2xl)] flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
-          <h2 id="create-project-title" className="text-lg font-semibold text-[var(--fg)]">Create Project</h2>
+          <h2 id="create-project-title" className="text-lg font-semibold text-[var(--fg)]">{isEdit ? 'Edit Project' : 'Create Project'}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -212,43 +232,25 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
               </div>
             </section>
 
-            {/* Attachments */}
+            {/* Attachments (URLs only; file upload not supported yet) */}
             <section className="space-y-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--fg-muted)]">
                 Attachments
               </h3>
               <div className={fieldClass}>
-                <label className="flex items-center gap-2 cursor-pointer w-fit">
-                  <span className="flex items-center justify-center w-9 h-9 rounded-[var(--radius)] bg-[var(--muted)] text-[var(--fg-muted)]">
-                    <Paperclip className="w-4 h-4" />
-                  </span>
-                  <span className="text-sm font-medium text-[var(--fg)]">Add files</span>
-                  <input
-                    type="file"
-                    multiple
-                    className="sr-only"
-                    onChange={handleFileChange}
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg"
-                  />
+                <label htmlFor="project-attachment-urls" className={labelClass}>
+                  Attachment URLs <span className="text-[var(--fg-muted)] font-normal">(optional)</span>
                 </label>
-                {attachments.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm text-[var(--fg-muted)]">
-                    {attachments.map((file, i) => (
-                      <li key={i} className="flex items-center justify-between gap-2 py-1">
-                        <span className="truncate">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeAttachment(i)}
-                          className="text-[var(--danger)] hover:underline shrink-0"
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <textarea
+                  id="project-attachment-urls"
+                  value={attachmentUrls}
+                  onChange={(e) => setAttachmentUrls(e.target.value)}
+                  rows={3}
+                  placeholder="One URL per line (e.g. links to images or documents)"
+                  className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[var(--fg)] placeholder:text-[var(--muted-fg)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/10 resize-none"
+                />
                 <p className="text-xs text-[var(--fg-muted)]">
-                  Optional. Attachments are stored locally for this session.
+                  Add links to files or images. File uploads are not supported yet.
                 </p>
               </div>
             </section>
@@ -327,7 +329,7 @@ export function ProjectFormModal({ isOpen, onClose, onSuccess }) {
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Project'}
+              {isSubmitting ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Project')}
             </Button>
           </div>
         </form>

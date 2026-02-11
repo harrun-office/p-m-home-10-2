@@ -36,6 +36,7 @@ export function AdminNotificationsPage() {
         onMarkAllRead={handleMarkAllRead}
         emptyMessage="No notifications."
         showFilters
+        projectsBasePath="/admin"
       />
     </MotionPage>
   );

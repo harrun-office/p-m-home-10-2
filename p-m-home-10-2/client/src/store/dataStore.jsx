@@ -7,16 +7,25 @@ const initialState = {
   projects: [],
   tasks: [],
   notifications: [],
+  loading: false,
+  error: null,
 };
 
 function reducer(state, action) {
   if (action.type === 'SET_DATA') {
     return {
+      ...state,
       users: action.payload.users ?? state.users,
       projects: action.payload.projects ?? state.projects,
       tasks: action.payload.tasks ?? state.tasks,
       notifications: action.payload.notifications ?? state.notifications,
     };
+  }
+  if (action.type === 'SET_LOADING') {
+    return { ...state, loading: !!action.payload };
+  }
+  if (action.type === 'SET_ERROR') {
+    return { ...state, error: action.payload ?? null };
   }
   return state;
 }
@@ -27,20 +36,37 @@ export function DataStoreProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const refresh = useCallback(() => {
-    const users = data.userRepo.list();
-    const projects = data.projectRepo.list();
-    const tasks = data.taskRepo.list();
-    const notifications = data.load(data.STORAGE_KEYS.NOTIFICATIONS, []);
-    dispatch({
-      type: 'SET_DATA',
-      payload: {
-        users,
-        projects,
-        tasks,
-        notifications: Array.isArray(notifications) ? notifications : [],
-      },
-    });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    try {
+      const users = data.userRepo.list();
+      const projects = data.projectRepo.list();
+      const tasks = data.taskRepo.list();
+      const notifications = data.load(data.STORAGE_KEYS.NOTIFICATIONS, []);
+      dispatch({
+        type: 'SET_DATA',
+        payload: {
+          users,
+          projects,
+          tasks,
+          notifications: Array.isArray(notifications) ? notifications : [],
+        },
+      });
+    } catch (err) {
+      dispatch({ type: 'SET_ERROR', payload: err?.message || 'Failed to load data' });
+    }
   }, []);
+
+  const setLoading = useCallback((value) => {
+    dispatch({ type: 'SET_LOADING', payload: value });
+  }, []);
+
+  const setError = useCallback((message) => {
+    dispatch({ type: 'SET_ERROR', payload: message ?? null });
+  }, []);
+
+  const retry = useCallback(() => {
+    refresh();
+  }, [refresh]);
 
   const resetDemo = useCallback(() => {
     data.resetAllToSeed();
@@ -141,6 +167,21 @@ export function DataStoreProvider({ children }) {
     refresh();
   }, [refresh]);
 
+  /** Notify all admins that an employee requested to mark a project as completed. */
+  const notifyAdminsProjectCompletionRequest = useCallback((projectId, projectName, requestedByUserId, requestedByName) => {
+    const users = data.userRepo.list();
+    const admins = users.filter((u) => u.role === 'ADMIN');
+    const message = `${requestedByName || 'An employee'} requested to mark project "${projectName}" as completed.`;
+    for (const admin of admins) {
+      data.notificationRepo.createForUser(admin.id, {
+        type: 'PROJECT_COMPLETION_REQUEST',
+        message,
+        projectId,
+      });
+    }
+    refresh();
+  }, [refresh]);
+
   const setUserActive = useCallback((userId, isActive) => {
     data.userRepo.setActive(userId, isActive);
     refresh();
@@ -171,7 +212,12 @@ export function DataStoreProvider({ children }) {
 
   const value = {
     state,
+    loading: state.loading,
+    error: state.error,
     refresh,
+    setLoading,
+    setError,
+    retry,
     resetDemo,
     runDeadlineCheck,
     createProject,
@@ -187,6 +233,7 @@ export function DataStoreProvider({ children }) {
     moveTaskStatus,
     markNotificationRead,
     markAllRead,
+    notifyAdminsProjectCompletionRequest,
     setUserActive,
     createUser,
     updateUser,

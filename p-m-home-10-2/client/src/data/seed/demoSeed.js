@@ -20,6 +20,11 @@ export function buildDemoSeed() {
   const in2 = addDays(todayISO, 2);
   const in14 = addDays(todayISO, 14);
   const past5 = addDays(todayISO, -5);
+  const past7 = addDays(todayISO, -7);
+  const past14 = addDays(todayISO, -14);
+  const past2 = addDays(todayISO, -2);
+  const past4 = addDays(todayISO, -4);
+  const past6 = addDays(todayISO, -6);
 
   const users = [
     { id: 'user-admin', name: 'Admin Demo', email: 'admin@demo.com', role: 'ADMIN', department: 'DEV', isActive: true, employeeId: 'CIPL1985', personalNumber: '' },
@@ -33,12 +38,126 @@ export function buildDemoSeed() {
   ];
 
   const projects = [
-    { id: 'proj-1', name: 'Portal Redesign', description: 'Customer portal UI overhaul', status: 'ACTIVE', startDate: past3, endDate: in7, assignedUserIds: ['user-emp', 'user-2'] },
-    { id: 'proj-2', name: 'API v2', description: 'REST API version 2', status: 'ACTIVE', startDate: past1, endDate: in5, assignedUserIds: ['user-2', 'user-4'] },
-    { id: 'proj-3', name: 'Sales Playbook', description: 'Presales materials and scripts', status: 'ACTIVE', startDate: todayISO, endDate: addDays(todayISO, 14), assignedUserIds: ['user-3', 'user-5'] },
-    { id: 'proj-4', name: 'Legacy Migration', description: 'Migrate legacy services', status: 'ON_HOLD', startDate: past3, endDate: in3, assignedUserIds: ['user-4'] },
-    { id: 'proj-5', name: 'Mobile App', description: 'React Native app', status: 'COMPLETED', startDate: addDays(todayISO, -60), endDate: past1, assignedUserIds: ['user-emp', 'user-6'] },
-    { id: 'proj-6', name: 'Learning Hub', description: 'Internal training and docs', status: 'ACTIVE', startDate: past1, endDate: in7, assignedUserIds: ['user-emp', 'user-2', 'user-4'] },
+    {
+      id: 'proj-1',
+      name: 'Portal Redesign',
+      description: 'Customer portal UI overhaul',
+      status: 'ACTIVE',
+      startDate: past3,
+      endDate: in7,
+      assignedUserIds: ['user-emp', 'user-2'],
+      attachments: ['https://picsum.photos/seed/portal1/400/300', 'https://picsum.photos/seed/portal2/400/300', 'design-brief.pdf', 'wireframes.fig', 'brand-guidelines.pdf'],
+      createdAt: past7,
+      statusHistory: [
+        { status: 'ACTIVE', at: past7, userId: 'user-admin' },
+      ],
+      activityLog: [
+        { id: 'evt-p1-1', type: 'milestone', at: past7, userId: 'user-admin', note: 'Project kickoff', payload: { title: 'Kickoff meeting' } },
+        { id: 'evt-p1-2', type: 'date_change', at: past6, userId: 'user-admin', payload: { field: 'startDate', oldValue: past14, newValue: past3 } },
+        { id: 'evt-p1-3', type: 'member_added', at: past5, userId: 'user-admin', payload: { userId: 'user-2' } },
+        { id: 'evt-p1-4', type: 'milestone', at: past5, userId: 'user-admin', payload: { title: 'Sprint 1 planning done' } },
+        { id: 'evt-p1-5', type: 'date_change', at: past3, userId: 'user-admin', payload: { field: 'endDate', oldValue: in5, newValue: in7 } },
+        { id: 'evt-p1-6', type: 'milestone', at: past2, userId: 'user-admin', note: 'Stakeholder sign-off', payload: { title: 'UI components approved' } },
+        { id: 'evt-p1-7', type: 'task_milestone', at: past2, userId: 'user-emp', payload: { taskId: 'task-5', message: 'Task completed' } },
+        { id: 'evt-p1-8', type: 'milestone', at: past1, userId: 'user-admin', note: 'Design approved', payload: { title: 'Design review completed' } },
+        { id: 'evt-p1-9', type: 'milestone', at: past1, userId: 'user-2', payload: { title: 'Figma handoff to dev' } },
+        { id: 'evt-p1-10', type: 'task_milestone', at: todayISO, userId: 'user-emp', payload: { taskId: 'task-3', message: 'Task completed' } },
+        { id: 'evt-p1-11', type: 'milestone', at: now, userId: 'user-admin', note: 'Ready for QA', payload: { title: 'Development phase complete' } },
+      ],
+    },
+    {
+      id: 'proj-2',
+      name: 'API v2',
+      description: 'REST API version 2',
+      status: 'ACTIVE',
+      startDate: past1,
+      endDate: in5,
+      assignedUserIds: ['user-2', 'user-4'],
+      createdAt: past5,
+      statusHistory: [{ status: 'ACTIVE', at: past5, userId: 'user-admin' }],
+      activityLog: [
+        { id: 'evt-p2-1', type: 'milestone', at: past5, userId: 'user-admin', payload: { title: 'API spec finalized' } },
+        { id: 'evt-p2-2', type: 'member_added', at: past4, userId: 'user-admin', payload: { userId: 'user-4' } },
+        { id: 'evt-p2-3', type: 'milestone', at: past3, userId: 'user-2', note: 'OpenAPI 3.0', payload: { title: 'Schema review done' } },
+        { id: 'evt-p2-4', type: 'task_milestone', at: past2, userId: 'user-4', payload: { taskId: 'task-10', message: 'Task completed' } },
+        { id: 'evt-p2-5', type: 'date_change', at: past1, userId: 'user-admin', payload: { field: 'endDate', oldValue: in3, newValue: in5 } },
+        { id: 'evt-p2-6', type: 'milestone', at: past1, userId: 'user-admin', payload: { title: 'Sprint 2 started' } },
+      ],
+    },
+    {
+      id: 'proj-3',
+      name: 'Sales Playbook',
+      description: 'Presales materials and scripts',
+      status: 'ACTIVE',
+      startDate: todayISO,
+      endDate: addDays(todayISO, 14),
+      assignedUserIds: ['user-3', 'user-5'],
+      createdAt: todayISO,
+      statusHistory: [{ status: 'ACTIVE', at: todayISO, userId: 'user-admin' }],
+      activityLog: [
+        { id: 'evt-p3-1', type: 'milestone', at: todayISO, userId: 'user-admin', note: 'Presales initiative started', payload: { title: 'Project started' } },
+        { id: 'evt-p3-2', type: 'milestone', at: todayISO, userId: 'user-3', payload: { title: 'Kickoff with sales team' } },
+      ],
+    },
+    {
+      id: 'proj-4',
+      name: 'Legacy Migration',
+      description: 'Migrate legacy services',
+      status: 'ON_HOLD',
+      startDate: past3,
+      endDate: in3,
+      assignedUserIds: ['user-4'],
+      createdAt: past14,
+      statusHistory: [
+        { status: 'ACTIVE', at: past14, userId: 'user-admin' },
+        { status: 'ON_HOLD', at: past5, userId: 'user-admin', note: 'Waiting on infrastructure' },
+      ],
+      activityLog: [
+        { id: 'evt-p4-1', type: 'milestone', at: past14, userId: 'user-admin', payload: { title: 'Discovery phase' } },
+        { id: 'evt-p4-2', type: 'date_change', at: past7, userId: 'user-admin', payload: { field: 'endDate', oldValue: past1, newValue: in3 } },
+        { id: 'evt-p4-3', type: 'milestone', at: past6, userId: 'user-4', payload: { title: 'Legacy API inventory done' } },
+        { id: 'evt-p4-4', type: 'milestone', at: past5, userId: 'user-admin', note: 'Waiting on infrastructure', payload: { title: 'Project put on hold' } },
+      ],
+    },
+    {
+      id: 'proj-5',
+      name: 'Mobile App',
+      description: 'React Native app',
+      status: 'COMPLETED',
+      startDate: addDays(todayISO, -60),
+      endDate: past1,
+      assignedUserIds: ['user-emp', 'user-6'],
+      createdAt: addDays(todayISO, -60),
+      statusHistory: [
+        { status: 'ACTIVE', at: addDays(todayISO, -60), userId: 'user-admin' },
+        { status: 'COMPLETED', at: past1, userId: 'user-admin', note: 'Shipped to store' },
+      ],
+      activityLog: [
+        { id: 'evt-p5-1', type: 'milestone', at: addDays(todayISO, -45), userId: 'user-admin', payload: { title: 'Alpha build' } },
+        { id: 'evt-p5-2', type: 'milestone', at: addDays(todayISO, -30), userId: 'user-admin', payload: { title: 'Beta release' } },
+        { id: 'evt-p5-3', type: 'task_milestone', at: addDays(todayISO, -7), userId: 'user-6', payload: { taskId: 'task-15', message: 'Task completed' } },
+        { id: 'evt-p5-4', type: 'milestone', at: past3, userId: 'user-admin', note: 'Shipped to store', payload: { title: 'Production release' } },
+        { id: 'evt-p5-5', type: 'task_milestone', at: past1, userId: 'user-emp', payload: { taskId: 'task-15', message: 'Release notes published' } },
+      ],
+    },
+    {
+      id: 'proj-6',
+      name: 'Learning Hub',
+      description: 'Internal training and docs',
+      status: 'ACTIVE',
+      startDate: past1,
+      endDate: in7,
+      assignedUserIds: ['user-emp', 'user-2', 'user-4'],
+      createdAt: past5,
+      statusHistory: [{ status: 'ACTIVE', at: past5, userId: 'user-admin' }],
+      activityLog: [
+        { id: 'evt-p6-1', type: 'milestone', at: past5, userId: 'user-admin', payload: { title: 'Hub launched' } },
+        { id: 'evt-p6-2', type: 'member_added', at: past4, userId: 'user-admin', payload: { userId: 'user-4' } },
+        { id: 'evt-p6-3', type: 'milestone', at: past3, userId: 'user-emp', payload: { title: 'React 19 guide published' } },
+        { id: 'evt-p6-4', type: 'task_milestone', at: past2, userId: 'user-2', payload: { taskId: 'task-17', message: 'Task completed' } },
+        { id: 'evt-p6-5', type: 'milestone', at: past1, userId: 'user-admin', payload: { title: 'Q1 learning goals set' } },
+      ],
+    },
   ];
 
   const tasks = [

@@ -85,6 +85,7 @@ export function create(payload, session) {
     createdById: session.userId,
     createdAt: now,
     assignedAt: payload.assignedAt ?? now,
+    updatedAt: now,
     tags: Array.isArray(payload.tags) ? payload.tags : [],
     deadline: payload.deadline ?? undefined,
     links: Array.isArray(payload.links) ? payload.links : [],
@@ -130,7 +131,8 @@ export function update(id, patch, session) {
   }
 
   const i = getTasks().findIndex((t) => t.id === id);
-  const next = { ...task, ...patch };
+  const now = nowISO();
+  const next = { ...task, ...patch, updatedAt: now };
   if (patch.links !== undefined) next.links = Array.isArray(patch.links) ? patch.links : (next.links || []);
   if (patch.attachments !== undefined) next.attachments = Array.isArray(patch.attachments) ? patch.attachments : (next.attachments || []);
   const tasks = getTasks();

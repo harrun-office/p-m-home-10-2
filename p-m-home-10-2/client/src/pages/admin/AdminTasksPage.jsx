@@ -252,7 +252,8 @@ export function AdminTasksPage() {
         setFilterProject('');
         setFilterStatus('');
         setFilterPriority('');
-        setFilterDate(todayKey());
+        setFilterDateStart(todayKey());
+        setFilterDateEnd(todayKey());
         break;
       case 'overdue-tasks':
         setFilterOverdue(true);
@@ -261,7 +262,8 @@ export function AdminTasksPage() {
         setFilterProject('');
         setFilterStatus('');
         setFilterPriority('');
-        setFilterDate('');
+        setFilterDateStart('');
+        setFilterDateEnd('');
         break;
       case 'overdue':
       case 'high-priority':
@@ -269,14 +271,16 @@ export function AdminTasksPage() {
         setFilterProject('');
         setFilterStatus('');
         setFilterPriority('HIGH');
-        setFilterDate('');
+        setFilterDateStart('');
+        setFilterDateEnd('');
         break;
       case 'this-week':
         setFilterAssignee('');
         setFilterProject('');
         setFilterStatus('');
         setFilterPriority('');
-        setFilterDate(todayKey());
+        setFilterDateStart(todayKey());
+        setFilterDateEnd(todayKey());
         break;
       case 'clear-all':
         setFilterOverdue(false);
@@ -663,7 +667,7 @@ export function AdminTasksPage() {
           onAction={
             tasks.length === 0
               ? handleCreateTask
-              : () => { setFilterProject(''); setFilterAssignee(''); setFilterStatus(''); setFilterPriority(''); setFilterDepartment(''); setFilterDate(''); }
+              : () => { setFilterProject(''); setFilterAssignee(''); setFilterStatus(''); setFilterPriority(''); setFilterDepartment(''); setFilterDateStart(''); setFilterDateEnd(''); }
           }
         />
       ) : view === VIEW_KANBAN ? (

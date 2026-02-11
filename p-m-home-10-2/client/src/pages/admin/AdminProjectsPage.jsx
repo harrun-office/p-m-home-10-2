@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.jsx';
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx';
-import { ProjectModal } from '../../components/admin/projects/ProjectModal.jsx';
 import { ProjectFormModal } from '../../components/admin/projects/ProjectFormModal.jsx';
 import { BulkActionsToolbar } from '../../components/admin/projects/BulkActionsToolbar.jsx';
 import { EmptyState } from '../../components/ui/EmptyState.jsx';
@@ -42,13 +41,6 @@ const PROJECT_KPIS = [
   { key: 'completedProjects', label: 'Done', icon: CheckCircle2, accent: 'var(--purple)', bg: 'var(--purple-light)' },
 ];
 
-const STATUS_FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'ACTIVE', label: 'Active', icon: FolderOpen },
-  { value: 'ON_HOLD', label: 'On Hold', icon: Pause },
-  { value: 'COMPLETED', label: 'Complete', icon: CheckCircle2 },
-];
-
 /**
  * Admin Projects: list, filter, create/edit, status, delete.
  * Improved layout, stats strip, and clearer UX.
@@ -62,9 +54,7 @@ export function AdminProjectsPage() {
   const [startDateFilter, setStartDateFilter] = useState('');
   const [endDateFilter, setEndDateFilter] = useState('');
   const [selectedProjects, setSelectedProjects] = useState(new Set());
-  const [modalOpen, setModalOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('create');
   const [editingProject, setEditingProject] = useState(null);
   const [statusChangeId, setStatusChangeId] = useState(null);
   const [page, setPage] = useState(1);
@@ -161,13 +151,13 @@ export function AdminProjectsPage() {
   }, [projects]);
 
   function handleCreate() {
+    setEditingProject(null);
     setCreateModalOpen(true);
   }
 
   function handleEdit(project) {
-    setModalMode('edit');
     setEditingProject(project);
-    setModalOpen(true);
+    setCreateModalOpen(true);
   }
 
   function handleStatusChange(projectId, newStatus) {
@@ -325,33 +315,6 @@ export function AdminProjectsPage() {
             <Filter className="w-4 h-4 text-[var(--fg-muted)]" aria-hidden />
             Search & filter
           </h2>
-          {/* Status quick filters: All, Active, On Hold, Complete */}
-          <div className="flex flex-wrap items-center gap-2 mb-4 pb-4 border-b border-[var(--border)]">
-            <span className="text-xs font-medium text-[var(--fg-muted)] mr-1">Show:</span>
-            {STATUS_FILTERS.map(({ value, label, icon: Icon }) => {
-              const isActive = statusFilter === value;
-              return (
-                <button
-                  key={value || 'all'}
-                  type="button"
-                  onClick={() => setStatusFilter(value)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-[var(--primary)] text-[var(--primary-fg)] shadow-sm'
-                      : 'bg-[var(--muted)] text-[var(--fg-muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]'
-                  }`}
-                  aria-pressed={isActive}
-                  aria-label={value ? `Show ${label} projects` : 'Show all projects'}
-                >
-                  {Icon && <Icon className="w-4 h-4 shrink-0" aria-hidden />}
-                  {label}
-                  <span className="text-xs opacity-90">
-                    ({value === 'ACTIVE' ? activeCount : value === 'ON_HOLD' ? onHoldCount : value === 'COMPLETED' ? completedCount : projects.length})
-                  </span>
-                </button>
-              );
-            })}
-          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             <div className="lg:col-span-2">
               <label htmlFor="projects-search" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
@@ -365,21 +328,6 @@ export function AdminProjectsPage() {
                 onChange={(e) => setSearchName(e.target.value)}
                 leftIcon={Search}
               />
-            </div>
-            <div>
-              <label htmlFor="projects-status-filter" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
-                Status
-              </label>
-              <Select
-                id="projects-status-filter"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                <option value="ACTIVE">Active</option>
-                <option value="ON_HOLD">On Hold</option>
-                <option value="COMPLETED">Completed</option>
-              </Select>
             </div>
             <div>
               <label htmlFor="projects-department-filter" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
@@ -626,22 +574,15 @@ export function AdminProjectsPage() {
 
       <ProjectFormModal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
-        onSuccess={() => setCreateModalOpen(false)}
-      />
-      <ProjectModal
-        open={modalOpen}
-        mode={modalMode}
-        project={editingProject}
         onClose={() => {
-          setModalOpen(false);
+          setCreateModalOpen(false);
           setEditingProject(null);
         }}
-        onSuccess={() => { }}
-        onDelete={() => {
-          setModalOpen(false);
+        onSuccess={() => {
+          setCreateModalOpen(false);
           setEditingProject(null);
         }}
+        project={editingProject}
       />
     </MotionPage>
   );

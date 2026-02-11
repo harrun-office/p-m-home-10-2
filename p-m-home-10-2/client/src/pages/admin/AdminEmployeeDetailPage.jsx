@@ -7,7 +7,7 @@ import { Card } from '../../components/ui/Card.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Select } from '../../components/ui/Select.jsx';
 import { Input } from '../../components/ui/Input.jsx';
-import { Mail, ListTodo, FolderKanban, ArrowLeft, ArrowRight, ChevronDown, User, Briefcase, CheckSquare, Clock, FolderOpen, Pause, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { Mail, ListTodo, FolderKanban, ArrowLeft, ArrowRight, ChevronDown, ChevronLeft, ChevronRight, User, Briefcase, CheckSquare, Clock, FolderOpen, Pause, CheckCircle2, MoreHorizontal } from 'lucide-react';
 
 const TASK_STATUS_LABELS = { TODO: 'To Do', IN_PROGRESS: 'In Progress', COMPLETED: 'Completed' };
 const TASK_STATUS_VARIANT = { TODO: 'neutral', IN_PROGRESS: 'warning', COMPLETED: 'success' };
@@ -15,7 +15,7 @@ const PROJECT_STATUS_LABELS = { ACTIVE: 'Active', ON_HOLD: 'On Hold', COMPLETED:
 const PROJECT_STATUS_VARIANT = { ACTIVE: 'success', ON_HOLD: 'warning', COMPLETED: 'neutral' };
 
 const INITIAL_PAGE_SIZE = 3;
-const TASKS_INITIAL_PAGE_SIZE = 5;
+const TASK_PAGE_SIZE_OPTIONS = [10, 50, 100, 200, 0]; // 0 = All
 const PROJECT_SORT_OPTIONS = [
   { value: 'name-asc', label: 'Name (A–Z)' },
   { value: 'name-desc', label: 'Name (Z–A)' },
@@ -81,12 +81,18 @@ export function AdminEmployeeDetailPage() {
   const [dateFilterCustomEnd, setDateFilterCustomEnd] = useState('');
   const [projectsSort, setProjectsSort] = useState('end-asc');
   const [projectsVisible, setProjectsVisible] = useState(INITIAL_PAGE_SIZE);
-  const [tasksVisible, setTasksVisible] = useState(TASKS_INITIAL_PAGE_SIZE);
+  const [tasksPageSize, setTasksPageSize] = useState(10);
+  const [tasksCurrentPage, setTasksCurrentPage] = useState(1);
+  const [taskFilterProjectId, setTaskFilterProjectId] = useState('');
 
   useEffect(() => {
     setProjectsVisible(INITIAL_PAGE_SIZE);
-    setTasksVisible(TASKS_INITIAL_PAGE_SIZE);
   }, [dateFilter, dateFilterCustomStart, dateFilterCustomEnd]);
+
+  // Reset to page 1 when filters or page size change
+  useEffect(() => {
+    setTasksCurrentPage(1);
+  }, [dateFilter, dateFilterCustomStart, dateFilterCustomEnd, tasksPageSize, taskFilterProjectId]);
 
   const today = todayKey();
   const tasksInDateRange = useMemo(() => {
@@ -120,6 +126,11 @@ export function AdminEmployeeDetailPage() {
       return inRange(assignedKey) || inRange(updatedKey);
     });
   }, [employeeTasks, dateFilter, dateFilterCustomStart, dateFilterCustomEnd, today]);
+
+  const tasksFilteredByProject = useMemo(() => {
+    if (!taskFilterProjectId) return tasksInDateRange;
+    return tasksInDateRange.filter((t) => t.projectId === taskFilterProjectId);
+  }, [tasksInDateRange, taskFilterProjectId]);
 
   const projectsInDateRange = useMemo(() => {
     if (dateFilter === 'all') return employeeProjects;
@@ -170,19 +181,23 @@ export function AdminEmployeeDetailPage() {
   }, [projectsInDateRange, projectsSort]);
 
   const sortedTasks = useMemo(() => {
-    // Default sort: newest updated tasks first
-    const list = [...tasksInDateRange];
+    const list = [...tasksFilteredByProject];
     return list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-  }, [tasksInDateRange]);
+  }, [tasksFilteredByProject]);
 
   const displayedProjects = sortedProjects.slice(0, projectsVisible);
-  const displayedTasks = sortedTasks.slice(0, tasksVisible);
   const hasMoreProjects = projectsVisible < sortedProjects.length;
-  const hasMoreTasks = tasksVisible < sortedTasks.length;
 
   const showMoreProjects = () => setProjectsVisible((n) => Math.min(n + 5, sortedProjects.length));
   const showAllProjects = () => setProjectsVisible(sortedProjects.length);
-  const showAllTasks = () => setTasksVisible(sortedTasks.length);
+
+  // Tasks pagination
+  const totalTasks = sortedTasks.length;
+  const effectivePageSize = tasksPageSize === 0 ? totalTasks : Math.max(1, Number(tasksPageSize) || 10);
+  const totalPages = Math.max(1, effectivePageSize >= totalTasks ? 1 : Math.ceil(totalTasks / effectivePageSize));
+  const clampedPage = Math.min(Math.max(1, tasksCurrentPage), totalPages);
+  const startIndex = (clampedPage - 1) * effectivePageSize;
+  const displayedTasks = sortedTasks.slice(startIndex, startIndex + effectivePageSize);
 
   if (!employee) {
     return (
@@ -608,80 +623,193 @@ export function AdminEmployeeDetailPage() {
             <div>
               <h2 className="text-lg font-semibold text-[var(--fg)] flex items-center gap-2">
                 <ListTodo className="w-5 h-5 text-[var(--accent)]" />
-                Tasks ({tasksInDateRange.length})
+                Tasks
               </h2>
             </div>
           </div>
 
-          {/* Date Filter Section */}
+          {/* Task summary cards (reflect current date + project filter) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--accent-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">Total</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--accent)]">{tasksFilteredByProject.length}</p>
+            </div>
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--success-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">Completed</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--success)]">
+                {tasksFilteredByProject.filter((t) => t.status === 'COMPLETED').length}
+              </p>
+            </div>
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--danger-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">Overdue</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--danger)]">
+                {tasksFilteredByProject.filter((t) => t.deadline && new Date(t.deadline) < new Date() && t.status !== 'COMPLETED').length}
+              </p>
+            </div>
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--warning-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">In progress</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--warning)]">
+                {tasksFilteredByProject.filter((t) => t.status === 'IN_PROGRESS').length}
+              </p>
+            </div>
+          </div>
+
+          {/* Date + Project filters */}
           <div className="bg-[var(--muted)]/30 rounded-lg p-4 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-[var(--fg)]">📅 Filter by time period:</span>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-[var(--fg)]">📅 Filter by time period:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Select
+                    id="employee-tasks-date-filter"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="min-w-[160px]"
+                    aria-label="Filter tasks by date range"
+                  >
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="week">Last 7 days</option>
+                    <option value="month">Last 30 days</option>
+                    <option value="all">All time</option>
+                    <option value="custom">Custom range</option>
+                    <option value="specific">Specific date</option>
+                  </Select>
+                  {(dateFilter === 'custom' || dateFilter === 'specific') && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={dateFilter === 'specific' ? dateFilterCustomStart : dateFilterCustomStart}
+                        onChange={(e) => setDateFilterCustomStart(e.target.value)}
+                        aria-label={dateFilter === 'specific' ? "Select date" : "From date"}
+                        className="min-w-[130px]"
+                        placeholder={dateFilter === 'specific' ? "Select date" : "Start date"}
+                      />
+                      {dateFilter === 'custom' && (
+                        <>
+                          <span className="text-[var(--fg-muted)] text-sm font-medium">to</span>
+                          <Input
+                            type="date"
+                            value={dateFilterCustomEnd}
+                            onChange={(e) => setDateFilterCustomEnd(e.target.value)}
+                            aria-label="To date"
+                            className="min-w-[130px]"
+                            placeholder="End date"
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-[var(--fg)]">📁 Filter by project:</span>
+                </div>
                 <Select
-                  id="employee-tasks-date-filter"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="min-w-[160px]"
-                  aria-label="Filter tasks by date range"
+                  id="employee-tasks-project-filter"
+                  value={taskFilterProjectId}
+                  onChange={(e) => setTaskFilterProjectId(e.target.value)}
+                  className="min-w-[200px]"
+                  aria-label="Filter tasks by project"
                 >
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="week">Last 7 days</option>
-                  <option value="month">Last 30 days</option>
-                  <option value="all">All time</option>
-                  <option value="custom">Custom range</option>
-                  <option value="specific">Specific date</option>
+                  <option value="">All projects</option>
+                  {employeeProjects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
                 </Select>
-                {(dateFilter === 'custom' || dateFilter === 'specific') && (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="date"
-                      value={dateFilter === 'specific' ? dateFilterCustomStart : dateFilterCustomStart}
-                      onChange={(e) => setDateFilterCustomStart(e.target.value)}
-                      aria-label={dateFilter === 'specific' ? "Select date" : "From date"}
-                      className="min-w-[130px]"
-                      placeholder={dateFilter === 'specific' ? "Select date" : "Start date"}
-                    />
-                    {dateFilter === 'custom' && (
-                      <>
-                        <span className="text-[var(--fg-muted)] text-sm font-medium">to</span>
-                        <Input
-                          type="date"
-                          value={dateFilterCustomEnd}
-                          onChange={(e) => setDateFilterCustomEnd(e.target.value)}
-                          aria-label="To date"
-                          className="min-w-[130px]"
-                          placeholder="End date"
-                        />
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
-        {tasksInDateRange.length === 0 ? (
+
+          {/* Tasks pagination: page size + page nav */}
+          {tasksFilteredByProject.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-[var(--fg-muted)]">Tasks per page:</span>
+                <div className="flex items-center gap-1">
+                  {TASK_PAGE_SIZE_OPTIONS.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setTasksPageSize(size)}
+                      className={`min-w-[2.5rem] px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        tasksPageSize === size
+                          ? 'bg-[var(--accent)] text-[var(--accent-fg)]'
+                          : 'bg-[var(--muted)] text-[var(--fg)] hover:bg-[var(--border)]'
+                      }`}
+                    >
+                      {size === 0 ? 'All' : size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-[var(--fg-muted)]">
+                  Page {clampedPage} of {totalPages}
+                  {effectivePageSize < totalTasks && (
+                    <span className="ml-1">
+                      ({startIndex + 1}–{Math.min(startIndex + effectivePageSize, totalTasks)} of {totalTasks})
+                    </span>
+                  )}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTasksCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={clampedPage <= 1}
+                    className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTasksCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={clampedPage >= totalPages}
+                    className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {tasksFilteredByProject.length === 0 ? (
           <div className="rounded-[var(--radius)] bg-gradient-to-br from-[var(--muted)]/30 to-[var(--muted)]/50 border-2 border-dashed border-[var(--border)] p-8 text-center">
             <div className="w-16 h-16 bg-[var(--accent)]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <ListTodo className="w-8 h-8 text-[var(--accent)]" />
             </div>
             <h3 className="text-lg font-medium text-[var(--fg)] mb-2">No tasks found</h3>
             <p className="text-sm text-[var(--fg-muted)] mb-4 max-w-md mx-auto">
-              {dateFilter === 'all'
+              {dateFilter === 'all' && !taskFilterProjectId
                 ? 'This employee hasn\'t been assigned any tasks yet.'
-                : `No tasks match your current filter (${dateFilter === 'today' ? 'Today' : dateFilter === 'yesterday' ? 'Yesterday' : dateFilter === 'week' ? 'Last 7 days' : dateFilter === 'month' ? 'Last 30 days' : dateFilter === 'custom' ? 'Custom range' : dateFilter === 'specific' ? 'Specific date' : dateFilter}). Try selecting a different time period.`}
+                : !taskFilterProjectId
+                  ? `No tasks match your current date filter. Try selecting a different time period or "All time".`
+                  : `No tasks in the selected project for this time period. Try a different project or "All projects".`}
             </p>
-            {dateFilter !== 'all' && (
-              <button
-                onClick={() => setDateFilter('all')}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-[var(--accent-fg)] rounded-md hover:bg-[var(--accent)]/90 transition-colors text-sm font-medium"
-              >
-                Show All Tasks
-              </button>
-            )}
+            <div className="flex flex-wrap justify-center gap-2">
+              {dateFilter !== 'all' && (
+                <button
+                  onClick={() => setDateFilter('all')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-[var(--accent-fg)] rounded-md hover:bg-[var(--accent)]/90 transition-colors text-sm font-medium"
+                >
+                  Show All Tasks (date)
+                </button>
+              )}
+              {taskFilterProjectId && (
+                <button
+                  onClick={() => setTaskFilterProjectId('')}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--muted)] text-[var(--fg)] rounded-md hover:bg-[var(--border)] transition-colors text-sm font-medium"
+                >
+                  All projects
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <>
@@ -811,16 +939,31 @@ export function AdminEmployeeDetailPage() {
               </div>
             </div>
 
-            {hasMoreTasks && (
-              <div className="mt-8 text-center">
-                <button
-                  type="button"
-                  onClick={showAllTasks}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-[var(--accent-fg)] rounded-md hover:bg-[var(--accent)]/90 transition-colors text-sm font-medium"
-                >
-                  <ChevronDown className="w-4 h-4" />
-                  Show all {sortedTasks.length} tasks
-                </button>
+            {totalPages > 1 && (
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+                <span className="text-sm text-[var(--fg-muted)]">
+                  Page {clampedPage} of {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTasksCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={clampedPage <= 1}
+                    className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTasksCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={clampedPage >= totalPages}
+                    className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </>

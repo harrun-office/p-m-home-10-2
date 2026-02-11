@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Bell, CheckCircle2, CalendarClock, UserPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bell, CheckCircle2, CalendarClock, UserPlus, Flag } from 'lucide-react';
 import { EmptyState } from '../ui/EmptyState.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Select } from '../ui/Select.jsx';
@@ -11,10 +12,12 @@ const FILTER_READ_UNREAD = 'unread';
 const FILTER_TYPE_ALL = 'all';
 const FILTER_TYPE_ASSIGNED = 'ASSIGNED';
 const FILTER_TYPE_DEADLINE = 'DEADLINE';
+const FILTER_TYPE_COMPLETION_REQUEST = 'PROJECT_COMPLETION_REQUEST';
 
 /**
  * Reusable notification list: summary, filters, and cards.
  * Props: notifications (already filtered by user), onMarkRead(id), onMarkAllRead(), emptyMessage, showFilters.
+ * projectsBasePath: base path for "View project" links (e.g. '/admin' or '/app') so link is role-aware.
  */
 export function NotificationsList({
   notifications = [],
@@ -22,6 +25,7 @@ export function NotificationsList({
   onMarkAllRead,
   emptyMessage = 'No notifications.',
   showFilters = true,
+  projectsBasePath = '/admin',
 }) {
   const [readFilter, setReadFilter] = useState(FILTER_READ_ALL);
   const [typeFilter, setTypeFilter] = useState(FILTER_TYPE_ALL);
@@ -31,6 +35,7 @@ export function NotificationsList({
     if (readFilter === FILTER_READ_UNREAD) list = list.filter((n) => !n.read);
     if (typeFilter === FILTER_TYPE_ASSIGNED) list = list.filter((n) => n.type === 'ASSIGNED');
     if (typeFilter === FILTER_TYPE_DEADLINE) list = list.filter((n) => n.type === 'DEADLINE');
+    if (typeFilter === FILTER_TYPE_COMPLETION_REQUEST) list = list.filter((n) => n.type === 'PROJECT_COMPLETION_REQUEST');
     return list;
   }, [notifications, readFilter, typeFilter]);
 
@@ -47,7 +52,15 @@ export function NotificationsList({
   function TypeIcon({ type }) {
     if (type === 'DEADLINE') return <CalendarClock className="w-5 h-5 text-[var(--warning-muted-fg)]" aria-hidden />;
     if (type === 'ASSIGNED') return <UserPlus className="w-5 h-5 text-[var(--primary-muted-fg)]" aria-hidden />;
+    if (type === 'PROJECT_COMPLETION_REQUEST') return <Flag className="w-5 h-5 text-[var(--success-muted-fg)]" aria-hidden />;
     return <Bell className="w-5 h-5 text-[var(--fg-muted)]" aria-hidden />;
+  }
+
+  function typeLabel(type) {
+    if (type === 'ASSIGNED') return 'Assigned';
+    if (type === 'DEADLINE') return 'Deadline';
+    if (type === 'PROJECT_COMPLETION_REQUEST') return 'Completion request';
+    return type;
   }
 
   return (
@@ -112,6 +125,7 @@ export function NotificationsList({
                 <option value={FILTER_TYPE_ALL}>All types</option>
                 <option value={FILTER_TYPE_ASSIGNED}>Assigned</option>
                 <option value={FILTER_TYPE_DEADLINE}>Deadline</option>
+                <option value={FILTER_TYPE_COMPLETION_REQUEST}>Completion request</option>
               </Select>
             </div>
           </div>
@@ -151,8 +165,8 @@ export function NotificationsList({
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                          <Badge variant={n.type === 'ASSIGNED' ? 'primary' : 'warning'}>
-                            {n.type}
+                          <Badge variant={n.type === 'ASSIGNED' ? 'primary' : n.type === 'PROJECT_COMPLETION_REQUEST' ? 'success' : 'warning'}>
+                            {typeLabel(n.type)}
                           </Badge>
                           {!n.read && (
                             <span className="text-xs font-medium text-[var(--primary-muted-fg)]">
@@ -163,6 +177,14 @@ export function NotificationsList({
                         <p className="text-sm sm:text-base text-[var(--fg)] leading-relaxed">
                           {n.message}
                         </p>
+                        {n.projectId && (
+                          <Link
+                            to={`${projectsBasePath}/projects/${n.projectId}`}
+                            className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-[var(--primary)] hover:underline"
+                          >
+                            View project →
+                          </Link>
+                        )}
                         <p className="text-xs text-[var(--fg-muted)] mt-2" title={full}>
                           {date} · {time}
                         </p>

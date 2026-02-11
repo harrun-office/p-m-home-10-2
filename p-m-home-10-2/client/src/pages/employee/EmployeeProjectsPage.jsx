@@ -5,9 +5,8 @@ import { getSession } from '../../store/sessionStore.js';
 import { EmptyState } from '../../components/ui/EmptyState.jsx';
 import { StatusBadge } from '../../components/ui/StatusBadge.jsx';
 import { Card } from '../../components/ui/Card.jsx';
-import { Select } from '../../components/ui/Select.jsx';
 import { Button } from '../../components/ui/Button.jsx';
-import { FolderKanban, Filter, Calendar, ChevronRight, PlayCircle, PauseCircle, CheckCircle2 } from 'lucide-react';
+import { FolderKanban, Calendar, ChevronRight, PlayCircle, CheckCircle2 } from 'lucide-react';
 
 /**
  * Employee projects: only projects where assignedUserIds includes session.userId.
@@ -17,7 +16,6 @@ export function EmployeeProjectsPage() {
   const navigate = useNavigate();
   const { state } = useDataStore();
   const session = getSession();
-  const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
     if (!session) navigate('/login', { replace: true });
@@ -30,18 +28,8 @@ export function EmployeeProjectsPage() {
     return projects.filter((p) => (p.assignedUserIds || []).includes(session.userId));
   }, [projects, session]);
 
-  const filteredProjects = useMemo(() => {
-    if (!statusFilter) return myProjects;
-    return myProjects.filter((p) => p.status === statusFilter);
-  }, [myProjects, statusFilter]);
-
   const activeCount = myProjects.filter((p) => p.status === 'ACTIVE').length;
   const completedCount = myProjects.filter((p) => p.status === 'COMPLETED').length;
-  const hasActiveFilters = !!statusFilter;
-
-  function clearFilters() {
-    setStatusFilter('');
-  }
 
   function formatDate(iso) {
     if (!iso) return '—';
@@ -82,74 +70,25 @@ export function EmployeeProjectsPage() {
             <p className="text-xs font-medium text-[var(--fg-muted)] uppercase tracking-wider">Completed</p>
           </div>
         </Card>
-        {hasActiveFilters && (
-          <Card padding="p-4" className="flex items-center gap-4 col-span-2 sm:col-span-1">
-            <p className="text-2xl font-bold tabular-nums text-[var(--primary-muted-fg)]">{filteredProjects.length}</p>
-            <div>
-              <p className="text-xs font-medium text-[var(--fg-muted)] uppercase tracking-wider">Results</p>
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="mt-1 h-auto py-0.5 text-xs">
-                Clear filter
-              </Button>
-            </div>
-          </Card>
-        )}
       </div>
-
-      {/* Filter */}
-      <section aria-labelledby="my-projects-filter-heading">
-        <Card>
-          <h2 id="my-projects-filter-heading" className="flex items-center gap-2 text-sm font-semibold text-[var(--fg)] uppercase tracking-wider mb-4">
-            <Filter className="w-4 h-4 text-[var(--fg-muted)]" aria-hidden />
-            Filter
-          </h2>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="min-w-[160px]">
-              <label htmlFor="my-projects-status" className="block text-xs font-medium text-[var(--fg-muted)] mb-1.5">
-                Status
-              </label>
-              <Select
-                id="my-projects-status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                <option value="ACTIVE">Active</option>
-                <option value="ON_HOLD">On Hold</option>
-                <option value="COMPLETED">Completed</option>
-              </Select>
-            </div>
-            {hasActiveFilters && (
-              <p className="text-sm text-[var(--fg-muted)]">
-                Showing {filteredProjects.length} of {myProjects.length} projects
-              </p>
-            )}
-          </div>
-        </Card>
-      </section>
 
       {/* Project cards */}
       <section aria-labelledby="my-projects-list-heading">
         <h2 id="my-projects-list-heading" className="flex items-center gap-2 text-lg font-semibold text-[var(--fg)] mb-4">
           <FolderKanban className="w-5 h-5 text-[var(--accent)] shrink-0" aria-hidden />
-          {hasActiveFilters ? `Results (${filteredProjects.length})` : 'All my projects'}
+          All my projects
         </h2>
 
-        {filteredProjects.length === 0 ? (
+        {myProjects.length === 0 ? (
           <Card className="py-12">
             <EmptyState
-              title={myProjects.length === 0 ? 'No projects assigned' : 'No results match your filter'}
-              message={
-                myProjects.length === 0
-                  ? 'You are not assigned to any projects yet.'
-                  : 'Try clearing the status filter.'
-              }
-              actionLabel={myProjects.length > 0 ? 'Clear filter' : undefined}
-              onAction={myProjects.length > 0 ? clearFilters : undefined}
+              title="No projects assigned"
+              message="You are not assigned to any projects yet."
             />
           </Card>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list">
-            {filteredProjects.map((p) => (
+            {myProjects.map((p) => (
               <li key={p.id}>
                 <Link
                   to={`/app/projects/${p.id}`}

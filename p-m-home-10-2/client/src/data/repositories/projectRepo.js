@@ -45,6 +45,7 @@ export function create(payload, createdByUserId) {
     createdAt: now,
     statusHistory: [{ status: 'ACTIVE', at: now, userId: createdByUserId }],
     activityLog: [],
+    attachments: Array.isArray(payload.attachments) ? payload.attachments : [],
   };
   projects.push(project);
   save(STORAGE_KEYS.PROJECTS, projects);

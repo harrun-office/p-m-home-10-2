@@ -46,6 +46,7 @@
  * @property {string} [createdAt] - ISO date string when project was created
  * @property {ProjectStatusEvent[]} [statusHistory] - history of status changes
  * @property {ProjectActivityEvent[]} [activityLog] - other timeline events (date changes, member changes, milestones)
+ * @property {string[]} [attachments] - file names or URLs (images, documents, etc.)
  */
 
 /**
@@ -60,6 +61,7 @@
  * @property {string} createdById
  * @property {string} createdAt - ISO date string
  * @property {string} assignedAt - ISO date string (when task was assigned; "My Tasks Today" uses this)
+ * @property {string} [updatedAt] - ISO date string (last update; used for sorting/filters)
  * @property {string} [deadline] - ISO date string (optional due date)
  * @property {string[]} tags - e.g. ["Learning"]
  * @property {string[]} [links] - Optional URLs (e.g. references, docs)
@@ -70,10 +72,11 @@
  * @typedef {Object} Notification
  * @property {string} id
  * @property {string} userId
- * @property {"ASSIGNED"|"DEADLINE"} type
+ * @property {"ASSIGNED"|"DEADLINE"|"PROJECT_COMPLETION_REQUEST"} type
  * @property {string} message
  * @property {string} createdAt - ISO date string
  * @property {boolean} read
+ * @property {string} [projectId] - optional; for PROJECT_COMPLETION_REQUEST, link to project
  */
 
 export {}
