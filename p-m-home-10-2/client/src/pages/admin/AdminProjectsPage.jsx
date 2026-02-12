@@ -35,10 +35,10 @@ import { MotionCard } from '../../components/motion/MotionCard.jsx';
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 const PROJECT_KPIS = [
-  { key: 'totalProjects', label: 'Total', icon: FolderKanban, accent: 'var(--accent)', bg: 'var(--accent-light)' },
-  { key: 'activeProjects', label: 'Active', icon: FolderOpen, accent: 'var(--success)', bg: 'var(--success-light)' },
-  { key: 'onHoldProjects', label: 'On hold', icon: Pause, accent: 'var(--warning)', bg: 'var(--warning-light)' },
-  { key: 'completedProjects', label: 'Done', icon: CheckCircle2, accent: 'var(--purple)', bg: 'var(--purple-light)' },
+  { key: 'totalProjects', label: 'Total', icon: FolderKanban, accent: 'var(--accent)', bg: 'var(--accent-light)', filterStatus: '' },
+  { key: 'activeProjects', label: 'Active', icon: FolderOpen, accent: 'var(--success)', bg: 'var(--success-light)', filterStatus: 'ACTIVE' },
+  { key: 'onHoldProjects', label: 'On hold', icon: Pause, accent: 'var(--warning)', bg: 'var(--warning-light)', filterStatus: 'ON_HOLD' },
+  { key: 'completedProjects', label: 'Done', icon: CheckCircle2, accent: 'var(--purple)', bg: 'var(--purple-light)', filterStatus: 'COMPLETED' },
 ];
 
 /**
@@ -259,29 +259,40 @@ export function AdminProjectsPage() {
           <p className="text-sm text-[var(--fg-muted)]">Real-time status and performance metrics</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-          {PROJECT_KPIS.map(({ key, label, icon: Icon, accent, bg }) => (
-            <div key={key} className="block group">
-              <MotionCard
-                asListItem
-                className="rounded-xl border-2 border-[var(--border)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-lg)] hover:border-[var(--border-focus)] transition-all duration-300 h-full group-hover:-translate-y-1"
-                style={{ background: bg }}
-              >
-                <div className="relative z-10 p-4 sm:p-5">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">{label}</p>
-                      <p className="text-2xl sm:text-3xl font-bold tabular-nums truncate" style={{ color: accent }}>
-                        {projectKpis[key]}
-                      </p>
+          {PROJECT_KPIS.map(({ key, label, icon: Icon, accent, bg, filterStatus }) => {
+            const isSelected = statusFilter === filterStatus;
+            return (
+              <div key={key} className="block group h-full">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter(filterStatus)}
+                  aria-pressed={isSelected}
+                  aria-label={`Filter by ${label}: ${projectKpis[key]} projects. Click to ${isSelected ? 'show all' : 'filter table'}.`}
+                  className="w-full h-full text-left rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 cursor-pointer"
+                >
+                  <MotionCard
+                    asListItem
+                    className={`rounded-xl border-2 shadow-[var(--shadow-sm)] transition-all duration-300 h-full group-hover:-translate-y-1 ${isSelected ? 'border-[var(--primary)] shadow-[var(--shadow-lg)] ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg)]' : 'border-[var(--border)] hover:shadow-[var(--shadow-lg)] hover:border-[var(--border-focus)]'}`}
+                    style={{ background: bg }}
+                  >
+                    <div className="relative z-10 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">{label}</p>
+                          <p className="text-2xl sm:text-3xl font-bold tabular-nums truncate" style={{ color: accent }}>
+                            {projectKpis[key]}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style={{ background: accent, color: 'white' }}>
+                          <Icon className="w-5 h-5" aria-hidden />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style={{ background: accent, color: 'white' }}>
-                      <Icon className="w-5 h-5" aria-hidden />
-                    </div>
-                  </div>
-                </div>
-              </MotionCard>
-            </div>
-          ))}
+                  </MotionCard>
+                </button>
+              </div>
+            );
+          })}
           {soonestDeadlineProject && (
             <div className="block group">
               <MotionCard

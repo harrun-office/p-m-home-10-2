@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDataStore } from '../../store/dataStore.jsx';
 import { getSession } from '../../store/sessionStore.js';
-import { todayKey, toDayKey } from '../../utils/date.js';
+import { todayKey, toDayKey, toLocalDayKey, addDaysToLocalKey } from '../../utils/date.js';
 import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { Select } from '../../components/ui/Select.jsx';
@@ -11,13 +11,24 @@ import { EmptyState } from '../../components/ui/EmptyState.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { MotionPage } from '../../components/motion/MotionPage.jsx';
 import { motion } from 'framer-motion';
-import { KanbanBoard } from '../../components/admin/tasks/KanbanBoard.jsx';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { TaskTable } from '../../components/admin/tasks/TaskTable.jsx';
 import { TaskModal } from '../../components/admin/tasks/TaskModal.jsx';
-import { Search, X, Filter, ChevronDown, ChevronUp, Columns3, Table, Plus } from 'lucide-react';
+import { PriorityBadge } from '../../components/admin/tasks/PriorityBadge.jsx';
+import { Search, X, Filter, ChevronDown, ChevronUp, Columns3, Table, Plus, ListTodo, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
 
 const VIEW_KANBAN = 'kanban';
 const VIEW_TABLE = 'table';
+const TASK_PAGE_SIZE_OPTIONS = [10, 50, 100, 200, 0];
+
+const PROJECT_COLORS = [
+  { bg: 'bg-[var(--danger-light)]', border: 'border-[var(--danger-muted)]', text: 'text-[var(--danger-muted-fg)]' },
+  { bg: 'bg-[var(--warning-light)]', border: 'border-[var(--warning-muted)]', text: 'text-[var(--warning-muted-fg)]' },
+  { bg: 'bg-[var(--info-light)]', border: 'border-[var(--info-muted)]', text: 'text-[var(--info-muted-fg)]' },
+  { bg: 'bg-[var(--success-light)]', border: 'border-[var(--success-muted)]', text: 'text-[var(--success-muted-fg)]' },
+  { bg: 'bg-[var(--purple-light)]', border: 'border-[var(--purple-muted)]', text: 'text-[var(--purple-fg)]' },
+  { bg: 'bg-[var(--muted)]', border: 'border-[var(--border)]', text: 'text-[var(--fg-muted)]' },
+];
 
 /**
  * Admin global tasks: filters (Project, Assignee, Status, Priority), view toggle Kanban | Table.
@@ -40,6 +51,12 @@ export function AdminTasksPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [filtersExpanded, setFiltersExpanded] = useState(false);
+  // Card view (when Kanban selected): time filter + pagination
+  const [taskTimeFilter, setTaskTimeFilter] = useState('all');
+  const [taskTimeCustomStart, setTaskTimeCustomStart] = useState('');
+  const [taskTimeCustomEnd, setTaskTimeCustomEnd] = useState('');
+  const [tasksPageSize, setTasksPageSize] = useState(10);
+  const [tasksCurrentPage, setTasksCurrentPage] = useState(1);
 
   // Sync overdue filter from URL (e.g. /admin/tasks?filter=overdue from dashboard)
   useEffect(() => {
@@ -164,6 +181,89 @@ export function AdminTasksPage() {
     const indexById = new Map(sorted.map((t, i) => [t.id, i + 1]));
     return (task) => `Task ${indexById.get(task.id) ?? '—'}`;
   }, [tasks]);
+
+  // Card view: filter tasks by time period (for when view === VIEW_KANBAN)
+  const tasksInTimeRange = useMemo(() => {
+    const today = todayKey();
+    if (taskTimeFilter === 'all') return filteredTasks;
+    let startKey;
+    let endKey = today;
+    if (taskTimeFilter === 'today') {
+      startKey = today;
+      endKey = today;
+    } else if (taskTimeFilter === 'yesterday') {
+      const yesterday = addDaysToLocalKey(today, -1);
+      startKey = yesterday;
+      endKey = yesterday;
+    } else if (taskTimeFilter === 'week') {
+      startKey = addDaysToLocalKey(today, -7);
+    } else if (taskTimeFilter === 'month') {
+      startKey = addDaysToLocalKey(today, -30);
+    } else if (taskTimeFilter === 'custom' && taskTimeCustomStart && taskTimeCustomEnd) {
+      startKey = taskTimeCustomStart;
+      endKey = taskTimeCustomEnd;
+    } else if (taskTimeFilter === 'specific' && taskTimeCustomStart) {
+      startKey = taskTimeCustomStart;
+      endKey = taskTimeCustomStart;
+    } else {
+      return filteredTasks;
+    }
+    const inRange = (key) => key && key >= startKey && key <= endKey;
+    return filteredTasks.filter((t) => {
+      const createdKey = t.createdAt ? toLocalDayKey(t.createdAt) : '';
+      return inRange(createdKey);
+    });
+  }, [filteredTasks, taskTimeFilter, taskTimeCustomStart, taskTimeCustomEnd]);
+
+  const sortedTasksForCard = useMemo(
+    () => [...tasksInTimeRange].sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || '')),
+    [tasksInTimeRange]
+  );
+  const totalTasksForCard = sortedTasksForCard.length;
+  const effectivePageSize = tasksPageSize === 0 ? totalTasksForCard : Math.max(1, Number(tasksPageSize) || 10);
+  const totalPagesForCard = Math.max(1, effectivePageSize >= totalTasksForCard ? 1 : Math.ceil(totalTasksForCard / effectivePageSize));
+  const clampedPageForCard = Math.min(Math.max(1, tasksCurrentPage), totalPagesForCard);
+  const startIndexForCard = (clampedPageForCard - 1) * effectivePageSize;
+  const displayedTasksForCard = sortedTasksForCard.slice(startIndexForCard, startIndexForCard + effectivePageSize);
+
+  const overdueCountForCard = useMemo(
+    () => tasksInTimeRange.filter((t) => t.status !== 'COMPLETED' && t.deadline && new Date(t.deadline) < new Date()).length,
+    [tasksInTimeRange]
+  );
+
+  const projectColorMap = useMemo(() => {
+    const map = {};
+    projects.forEach((p, i) => {
+      map[p.id] = PROJECT_COLORS[i % PROJECT_COLORS.length];
+    });
+    return map;
+  }, [projects]);
+
+  function getProjectName(projectId) {
+    const p = projects.find((x) => x.id === projectId);
+    return p ? p.name : '—';
+  }
+
+  function getUserName(userId) {
+    const u = users.find((x) => x.id === userId);
+    return u ? u.name : '—';
+  }
+
+  function getUserInitials(userId) {
+    const u = users.find((x) => x.id === userId);
+    if (!u) return '?';
+    return u.name.split(' ').map((n) => n[0]).join('').toUpperCase();
+  }
+
+  function handleKanbanDragEnd(result) {
+    const { destination, source, draggableId } = result;
+    if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) return;
+    handleMoveStatus(draggableId, destination.droppableId);
+  }
+
+  useEffect(() => {
+    setTasksCurrentPage(1);
+  }, [taskTimeFilter, taskTimeCustomStart, taskTimeCustomEnd, tasksPageSize]);
 
   function canDeleteTask(task) {
     if (!session) return false;
@@ -589,42 +689,6 @@ export function AdminTasksPage() {
                   <option value="TESTER">TESTER</option>
                 </Select>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[var(--fg)]">Assigned date</label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    type="date"
-                    value={filterDateStart}
-                    onChange={(e) => setFilterDateStart(e.target.value)}
-                    className="min-w-[140px]"
-                    aria-label="Filter from date"
-                  />
-                  <span className="text-[var(--fg-muted)] text-sm">to</span>
-                  <Input
-                    type="date"
-                    value={filterDateEnd}
-                    onChange={(e) => setFilterDateEnd(e.target.value)}
-                    className="min-w-[140px]"
-                    aria-label="Filter to date"
-                  />
-                  <Button
-                    variant={filterDateStart === todayKey() && filterDateEnd === todayKey() ? 'primary' : 'outline'}
-                    size="sm"
-                    onClick={() => { const today = todayKey(); setFilterDateStart(today); setFilterDateEnd(today); }}
-                    className="whitespace-nowrap"
-                  >
-                    Today
-                  </Button>
-                  <Button
-                    variant={!filterDateStart && !filterDateEnd ? 'primary' : 'outline'}
-                    size="sm"
-                    onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
-                    className="whitespace-nowrap"
-                  >
-                    Show All
-                  </Button>
-                </div>
-              </div>
             </div>
           </motion.div>
         )}
@@ -671,28 +735,227 @@ export function AdminTasksPage() {
           }
         />
       ) : view === VIEW_KANBAN ? (
-        <section aria-labelledby="kanban-heading" className="space-y-0">
-          <h2 id="kanban-heading" className="sr-only">Task board</h2>
-          <KanbanBoard
-            tasks={filteredTasks}
-            users={users}
-            projects={projects}
-            onMoveStatus={handleMoveStatus}
-            onEdit={handleEditTask}
-            onDelete={handleDeleteTask}
-            canDelete={canDeleteTask}
-            readOnly={false}
-            getTaskReadOnly={getTaskReadOnly}
-            getTaskDisplayId={getTaskDisplayId}
-            selectedTasks={selectedTasks}
-            onSelectTask={handleSelectTask}
-            onSelectAll={handleSelectAll}
-            onBulkStatusChange={handleBulkStatusChange}
-            onClearSelection={clearSelection}
-            onNavigateToProject={handleNavigateToProject}
-            loading={false}
-          />
-        </section>
+        <Card className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow)] transition-all duration-150 hover:border-[var(--border-focus)] hover:shadow-[var(--shadow-md)] p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <h2 className="text-lg font-semibold text-[var(--fg)] flex items-center gap-2">
+              <ListTodo className="w-5 h-5 text-[var(--accent)]" />
+              Tasks
+            </h2>
+          </div>
+
+          {/* Task summary cards - same design as EmployeeProjectDetailPage */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--accent-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">Total</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--accent)]">{tasksInTimeRange.length}</p>
+            </div>
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--success-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">Completed</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--success)]">{tasksInTimeRange.filter((t) => t.status === 'COMPLETED').length}</p>
+            </div>
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--danger-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">Overdue</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--danger)]">{overdueCountForCard}</p>
+            </div>
+            <div className="rounded-xl border-2 border-[var(--border)] p-4 bg-[var(--warning-light)]">
+              <p className="text-xs font-semibold text-[var(--fg-muted)] uppercase tracking-wider mb-1">In progress</p>
+              <p className="text-2xl font-bold tabular-nums text-[var(--warning)]">{tasksInTimeRange.filter((t) => t.status === 'IN_PROGRESS').length}</p>
+            </div>
+          </div>
+
+          {/* Filter by created date */}
+          <div className="bg-[var(--muted)]/30 rounded-lg p-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-[var(--fg)]">Filter by created date:</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  value={taskTimeFilter}
+                  onChange={(e) => setTaskTimeFilter(e.target.value)}
+                  className="min-w-[160px]"
+                  aria-label="Filter tasks by created date"
+                >
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="week">Last 7 days</option>
+                  <option value="month">Last 30 days</option>
+                  <option value="all">All time</option>
+                  <option value="custom">Custom range</option>
+                  <option value="specific">Specific date</option>
+                </Select>
+                {(taskTimeFilter === 'custom' || taskTimeFilter === 'specific') && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="date"
+                      value={taskTimeCustomStart}
+                      onChange={(e) => setTaskTimeCustomStart(e.target.value)}
+                      className="min-w-[130px]"
+                      aria-label={taskTimeFilter === 'specific' ? 'Select date' : 'From date'}
+                    />
+                    {taskTimeFilter === 'custom' && (
+                      <>
+                        <span className="text-[var(--fg-muted)] text-sm">to</span>
+                        <Input type="date" value={taskTimeCustomEnd} onChange={(e) => setTaskTimeCustomEnd(e.target.value)} className="min-w-[130px]" aria-label="To date" />
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tasks per page + Pagination */}
+          {tasksInTimeRange.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-[var(--fg-muted)]">Tasks per page:</span>
+                <div className="flex items-center gap-1">
+                  {TASK_PAGE_SIZE_OPTIONS.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setTasksPageSize(size)}
+                      className={`min-w-[2.5rem] px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        tasksPageSize === size ? 'bg-[var(--accent)] text-[var(--accent-fg)]' : 'bg-[var(--muted)] text-[var(--fg)] hover:bg-[var(--border)]'
+                      }`}
+                    >
+                      {size === 0 ? 'All' : size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-[var(--fg-muted)]">
+                  Page {clampedPageForCard} of {totalPagesForCard}
+                  {effectivePageSize < totalTasksForCard && (
+                    <span className="ml-1">({startIndexForCard + 1}–{Math.min(startIndexForCard + effectivePageSize, totalTasksForCard)} of {totalTasksForCard})</span>
+                  )}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTasksCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={clampedPageForCard <= 1}
+                    className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTasksCurrentPage((p) => Math.min(totalPagesForCard, p + 1))}
+                    disabled={clampedPageForCard >= totalPagesForCard}
+                    className="p-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Kanban columns: To Do | In Progress | Completed (drag and drop) */}
+          {displayedTasksForCard.length === 0 ? (
+            <div className="rounded-xl bg-gradient-to-br from-[var(--muted)]/30 to-[var(--muted)]/50 border-2 border-dashed border-[var(--border)] p-8 text-center">
+              <ListTodo className="w-12 h-12 text-[var(--fg-muted)] mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-[var(--fg)] mb-2">No tasks in this range</h3>
+              <p className="text-sm text-[var(--fg-muted)]">
+                {taskTimeFilter === 'all' ? 'No tasks match your filters.' : 'Try "All time" or adjust the filter.'}
+              </p>
+            </div>
+          ) : (
+            <DragDropContext onDragEnd={handleKanbanDragEnd}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {['TODO', 'IN_PROGRESS', 'COMPLETED'].map((status) => {
+                  const columnTasks = displayedTasksForCard.filter((t) => t.status === status);
+                  return (
+                    <Droppable key={status} droppableId={status}>
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-4">
+                          <div className="flex items-center gap-2 pb-2 border-b border-[var(--border)]">
+                            <div className={`w-3 h-3 rounded-full shrink-0 ${status === 'TODO' ? 'bg-gray-400' : status === 'IN_PROGRESS' ? 'bg-yellow-500' : 'bg-green-500'}`} aria-hidden />
+                            <h3 className="font-medium text-[var(--fg)]">{status === 'TODO' ? 'To Do' : status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}</h3>
+                            <span className="text-xs text-[var(--fg-muted)] bg-[var(--muted)] px-2 py-1 rounded-full">
+                              {columnTasks.length}
+                            </span>
+                          </div>
+                          <div className="space-y-3 min-h-[200px]">
+                            {columnTasks.map((t, index) => {
+                              const taskReadOnly = getTaskReadOnly(t);
+                              const projectColor = projectColorMap[t.projectId] || { bg: 'bg-[var(--muted)]', border: 'border-[var(--border)]', text: 'text-[var(--fg-muted)]' };
+                              const truncate = (text, max = 60) => (!text || text.length <= max ? text : text.slice(0, max) + '...');
+                              return (
+                                <Draggable key={t.id} draggableId={t.id} index={index} isDragDisabled={taskReadOnly}>
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      className={`group relative overflow-hidden bg-[var(--card)] rounded-xl border border-[var(--border)] shadow-[var(--shadow)] hover:shadow-[var(--shadow-md)] transition-all duration-200 cursor-pointer hover:border-[var(--border-focus)] ${snapshot.isDragging ? 'shadow-[var(--shadow-xl)] scale-[1.02] opacity-95 z-10' : ''}`}
+                                      onClick={(e) => { if (!e.target.closest('[data-drag-handle]')) handleEditTask(t); }}
+                                      role="button"
+                                      tabIndex={0}
+                                      onKeyDown={(e) => e.key === 'Enter' && handleEditTask(t)}
+                                    >
+                                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${projectColor.bg} ${projectColor.border} border-r`} aria-hidden />
+                                      <div className="pl-4 pr-3 py-3">
+                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                          <div className="min-w-0 flex-1">
+                                            <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${projectColor.text} ${projectColor.bg} ${projectColor.border}`}>
+                                              {getProjectName(t.projectId)}
+                                            </span>
+                                            {getTaskDisplayId && (
+                                              <span className="ml-1.5 text-[10px] text-[var(--muted-fg)] tabular-nums">{getTaskDisplayId(t)}</span>
+                                            )}
+                                          </div>
+                                          {!taskReadOnly && (
+                                            <div data-drag-handle {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-[var(--muted)] opacity-60 group-hover:opacity-100" aria-label="Drag to move">
+                                              <GripVertical className="w-4 h-4 text-[var(--muted-fg)]" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <h4 className="font-semibold text-[var(--fg)] text-sm mb-1">{t.title || 'Untitled task'}</h4>
+                                        {t.description && (
+                                          <p className="text-xs text-[var(--fg-muted)] line-clamp-2 mb-3">{truncate(t.description, 80)}</p>
+                                        )}
+                                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                                          <div className="w-6 h-6 rounded-full bg-[var(--muted)] flex items-center justify-center text-[10px] font-semibold text-[var(--fg)] shrink-0">
+                                            {getUserInitials(t.assigneeId)}
+                                          </div>
+                                          <span className="text-xs text-[var(--fg-secondary)] truncate">{getUserName(t.assigneeId)}</span>
+                                          <PriorityBadge priority={t.priority} />
+                                        </div>
+                                        <div className="space-y-0.5 text-[10px] text-[var(--muted-fg)]">
+                                          {t.assignedAt && <div>Assigned: {new Date(t.assignedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>}
+                                          {t.deadline && <div>End: {new Date(t.deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>}
+                                        </div>
+                                        {t.deadline && new Date(t.deadline) < new Date() && t.status !== 'COMPLETED' && (
+                                          <div className="mt-2 flex items-center gap-1 text-xs text-[var(--danger)]">
+                                            <span className="w-2 h-2 bg-[var(--danger)] rounded-full shrink-0" aria-hidden />
+                                            <span className="font-medium">Overdue</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
+                            {columnTasks.length === 0 && (
+                              <div className="text-center py-8 text-[var(--fg-muted)] text-sm border-2 border-dashed border-[var(--border)] rounded-lg">None</div>
+                            )}
+                            {provided.placeholder}
+                          </div>
+                        </div>
+                      )}
+                    </Droppable>
+                  );
+                })}
+              </div>
+            </DragDropContext>
+          )}
+        </Card>
       ) : (
         <TaskTable
           tasks={filteredTasks}
