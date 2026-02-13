@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { RequireAuth } from './components/auth/RequireAuth.jsx';
 import { SidebarProvider } from './context/SidebarContext.jsx';
@@ -5,6 +6,8 @@ import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AdminLayout } from './components/layout/AdminLayout.jsx';
 import { AppLayout } from './components/layout/AppLayout.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage.jsx';
+import { ResetPasswordPage } from './pages/ResetPasswordPage.jsx';
 import { DevToolsPage } from './pages/DevToolsPage.jsx';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage.jsx';
 import { AdminProjectsPage } from './pages/admin/AdminProjectsPage.jsx';
@@ -20,11 +23,44 @@ import { EmployeeProjectsPage } from './pages/employee/EmployeeProjectsPage.jsx'
 import { EmployeeProjectDetailPage } from './pages/employee/EmployeeProjectDetailPage.jsx';
 import { EmployeeNotificationsPage } from './pages/employee/EmployeeNotificationsPage.jsx';
 import { EmployeeProfilePage } from './pages/employee/EmployeeProfilePage.jsx';
+import { getCurrentUser } from './api/auth.js';
+import { getToken, removeToken } from './utils/authToken.js';
+import { setSession, clearSession } from './store/sessionStore.js';
 import { useDataStore } from './store/dataStore.jsx';
 import './App.css';
 
 function App() {
   const { error, retry, loading } = useDataStore();
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (getToken()) {
+        try {
+          const user = await getCurrentUser();
+          if (!cancelled) setSession(user);
+        } catch {
+          if (!cancelled) {
+            removeToken();
+            clearSession();
+          }
+        }
+      } else {
+        clearSession();
+      }
+      if (!cancelled) setAuthReady(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!authReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]" role="status" aria-label="Loading">
+        <div className="text-sm text-[var(--fg-muted)]">Loading…</div>
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider>
@@ -49,6 +85,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboardPage />} />
           <Route path="dev-tools" element={<DevToolsPage />} />

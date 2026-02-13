@@ -1,7 +1,14 @@
 import { load, save, loadArray } from '../storage/storage.js';
 import { STORAGE_KEYS } from '../storage/storageKeys.js';
 import { uid } from '../../utils/id.js';
-import { hashPassword } from '../../utils/auth.js';
+
+/** Local hash for admin-created user passwords (demo storage only). */
+async function hashPassword(plain) {
+  const encoded = new TextEncoder().encode(plain);
+  const buffer = await crypto.subtle.digest('SHA-256', encoded);
+  const bytes = new Uint8Array(buffer);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 function getUsers() {
   return loadArray(STORAGE_KEYS.USERS, []);

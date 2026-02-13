@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LogOut, Moon, Sun, Menu, X, User } from 'lucide-react';
 import { getSession, clearSession } from '../../store/sessionStore.js';
+import { removeToken } from '../../utils/authToken.js';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { useSidebar } from '../../context/SidebarContext.jsx';
 
@@ -60,13 +61,14 @@ export function Topbar() {
 
   function handleLogout() {
     setProfileOpen(false);
+    removeToken();
     clearSession();
     navigate('/login', { replace: true });
   }
 
   function handleProfile() {
     setProfileOpen(false);
-    navigate(session?.role === 'ADMIN' ? '/admin/profile' : '/employee/profile');
+    navigate(session?.role === 'ADMIN' ? '/admin/profile' : '/app/profile');
   }
 
   useEffect(() => {

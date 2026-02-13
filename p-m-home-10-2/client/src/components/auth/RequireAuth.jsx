@@ -1,14 +1,15 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { getSession } from '../../store/sessionStore.js';
+import { getToken } from '../../utils/authToken.js';
 
 /**
- * If no session, redirect to /login. Otherwise render children.
+ * If no JWT token, redirect to /login. Otherwise render children.
+ * Session may still be restoring; token is the source of truth.
  */
 export function RequireAuth({ children }) {
-  const session = getSession();
   const location = useLocation();
+  const token = getToken();
 
-  if (!session) {
+  if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return children;

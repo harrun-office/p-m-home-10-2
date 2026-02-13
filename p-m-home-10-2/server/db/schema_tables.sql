@@ -1,22 +1,16 @@
 -- =============================================================================
 -- server/db/schema_tables.sql
 -- =============================================================================
--- Paste your CREATE TABLE statements here. Do NOT include CREATE DATABASE or USE.
--- This file is executed by the init_schema migration.
--- Tables (drop order for rollback): notifications, task_attachments, task_links,
--- task_tags, tasks, project_activity_events, project_status_history, project_attachments,
--- project_members, projects, users
+-- Tables only (no CREATE DATABASE or USE)
+-- MySQL 8+
+-- InnoDB + utf8mb4
+-- Audit columns: created_at, updated_at, deleted_at
 -- =============================================================================
+
 /* =========================================================
-   Project Management — Tables Only (MySQL 8+)
-   - InnoDB + utf8mb4
-   - Audit columns on all tables: created_at, updated_at, deleted_at
-   - Soft delete supported via deleted_at (your code must filter deleted_at IS NULL)
+   USERS
    ========================================================= */
 
--- -------------------------
--- USERS
--- -------------------------
 CREATE TABLE users (
   id              VARCHAR(64)  NOT NULL,
   name            VARCHAR(150) NOT NULL,
@@ -25,7 +19,7 @@ CREATE TABLE users (
   department      ENUM('DEV','PRESALES','TESTER') NOT NULL DEFAULT 'DEV',
   is_active       TINYINT(1)   NOT NULL DEFAULT 1,
   employee_id     VARCHAR(64)  NULL,
-  personal_number VARCHAR(32)  NULL,
+  contact_number  VARCHAR(32)  NULL,
   password_hash   VARCHAR(255) NULL,
 
   created_at      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -43,9 +37,11 @@ CREATE TABLE users (
   FULLTEXT KEY ftx_users_search (name, email, employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -------------------------
--- PROJECTS
--- -------------------------
+
+/* =========================================================
+   PROJECTS
+   ========================================================= */
+
 CREATE TABLE projects (
   id          VARCHAR(64)   NOT NULL,
   name        VARCHAR(200)  NOT NULL,
@@ -69,7 +65,11 @@ CREATE TABLE projects (
   FULLTEXT KEY ftx_projects_search (name, description)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Many-to-many: Project members (frontend: project.assignedUserIds[])
+
+/* =========================================================
+   PROJECT MEMBERS
+   ========================================================= */
+
 CREATE TABLE project_members (
   project_id VARCHAR(64) NOT NULL,
   user_id    VARCHAR(64) NOT NULL,
@@ -79,6 +79,7 @@ CREATE TABLE project_members (
   deleted_at DATETIME(3) NULL,
 
   PRIMARY KEY (project_id, user_id),
+
   KEY idx_pm_user (user_id),
   KEY idx_pm_deleted_at (deleted_at),
 
@@ -91,17 +92,22 @@ CREATE TABLE project_members (
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Project attachments (frontend: project.attachments[] strings)
+
+/* =========================================================
+   PROJECT ATTACHMENTS
+   ========================================================= */
+
 CREATE TABLE project_attachments (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   project_id VARCHAR(64)     NOT NULL,
-  value      TEXT            NOT NULL,  -- URL or filename
+  value      TEXT            NOT NULL,
 
   created_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   deleted_at DATETIME(3)     NULL,
 
   PRIMARY KEY (id),
+
   KEY idx_project_attachments_project (project_id),
   KEY idx_project_attachments_deleted_at (deleted_at),
 
@@ -110,7 +116,11 @@ CREATE TABLE project_attachments (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Project status history (frontend: project.statusHistory[])
+
+/* =========================================================
+   PROJECT STATUS HISTORY
+   ========================================================= */
+
 CREATE TABLE project_status_history (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   project_id VARCHAR(64)     NOT NULL,
@@ -124,6 +134,7 @@ CREATE TABLE project_status_history (
   deleted_at DATETIME(3)     NULL,
 
   PRIMARY KEY (id),
+
   KEY idx_psh_project_time (project_id, changed_at),
   KEY idx_psh_user (user_id),
   KEY idx_psh_deleted_at (deleted_at),
@@ -137,21 +148,26 @@ CREATE TABLE project_status_history (
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Project activity events (frontend: project.activityLog[])
+
+/* =========================================================
+   PROJECT ACTIVITY EVENTS
+   ========================================================= */
+
 CREATE TABLE project_activity_events (
-  id          VARCHAR(64) NOT NULL, -- frontend activity event id
+  id          VARCHAR(64) NOT NULL,
   project_id  VARCHAR(64) NOT NULL,
   type        ENUM('date_change','member_added','member_removed','milestone','task_milestone') NOT NULL,
-  occurred_at DATETIME(3) NOT NULL, -- frontend "at"
+  occurred_at DATETIME(3) NOT NULL,
   user_id     VARCHAR(64) NULL,
   note        TEXT        NULL,
-  payload     JSON        NULL,     -- varying shapes by type
+  payload     JSON        NULL,
 
   created_at  DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at  DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   deleted_at  DATETIME(3) NULL,
 
   PRIMARY KEY (id),
+
   KEY idx_pae_project_time (project_id, occurred_at),
   KEY idx_pae_type (type),
   KEY idx_pae_user (user_id),
@@ -166,9 +182,11 @@ CREATE TABLE project_activity_events (
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -------------------------
--- TASKS
--- -------------------------
+
+/* =========================================================
+   TASKS
+   ========================================================= */
+
 CREATE TABLE tasks (
   id            VARCHAR(64)  NOT NULL,
   project_id    VARCHAR(64)  NOT NULL,
@@ -211,7 +229,11 @@ CREATE TABLE tasks (
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Task tags (frontend: task.tags[] strings)
+
+/* =========================================================
+   TASK TAGS
+   ========================================================= */
+
 CREATE TABLE task_tags (
   task_id    VARCHAR(64) NOT NULL,
   tag        VARCHAR(64) NOT NULL,
@@ -221,6 +243,7 @@ CREATE TABLE task_tags (
   deleted_at DATETIME(3) NULL,
 
   PRIMARY KEY (task_id, tag),
+
   KEY idx_task_tags_tag (tag),
   KEY idx_task_tags_deleted_at (deleted_at),
 
@@ -229,7 +252,11 @@ CREATE TABLE task_tags (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Task links (frontend: task.links[] strings)
+
+/* =========================================================
+   TASK LINKS
+   ========================================================= */
+
 CREATE TABLE task_links (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   task_id    VARCHAR(64)     NOT NULL,
@@ -240,6 +267,7 @@ CREATE TABLE task_links (
   deleted_at DATETIME(3)     NULL,
 
   PRIMARY KEY (id),
+
   KEY idx_task_links_task (task_id),
   KEY idx_task_links_deleted_at (deleted_at),
 
@@ -248,17 +276,22 @@ CREATE TABLE task_links (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Task attachments (frontend: task.attachments[] strings)
+
+/* =========================================================
+   TASK ATTACHMENTS
+   ========================================================= */
+
 CREATE TABLE task_attachments (
   id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   task_id    VARCHAR(64)     NOT NULL,
-  value      TEXT            NOT NULL,  -- URL or filename
+  value      TEXT            NOT NULL,
 
   created_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   deleted_at DATETIME(3)     NULL,
 
   PRIMARY KEY (id),
+
   KEY idx_task_attachments_task (task_id),
   KEY idx_task_attachments_deleted_at (deleted_at),
 
@@ -267,9 +300,11 @@ CREATE TABLE task_attachments (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -------------------------
--- NOTIFICATIONS
--- -------------------------
+
+/* =========================================================
+   NOTIFICATIONS
+   ========================================================= */
+
 CREATE TABLE notifications (
   id         VARCHAR(64) NOT NULL,
   user_id    VARCHAR(64) NOT NULL,
@@ -297,4 +332,28 @@ CREATE TABLE notifications (
   CONSTRAINT fk_notifications_project
     FOREIGN KEY (project_id) REFERENCES projects(id)
     ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+/* =========================================================
+   PASSWORD RESETS (FOR FORGOT PASSWORD FLOW)
+   ========================================================= */
+
+CREATE TABLE password_resets (
+  id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id      VARCHAR(64)     NOT NULL,
+  token_hash   VARCHAR(255)    NOT NULL,
+  expires_at   DATETIME(3)     NOT NULL,
+  used_at      DATETIME(3)     NULL,
+
+  created_at   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+  PRIMARY KEY (id),
+
+  KEY idx_password_resets_user (user_id),
+  KEY idx_password_resets_expires (expires_at),
+
+  CONSTRAINT fk_password_resets_user
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

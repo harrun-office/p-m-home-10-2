@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDataStore } from '../store/dataStore.jsx';
+import { login as loginApi, getCurrentUser } from '../api/auth.js';
+import { setToken } from '../utils/authToken.js';
 import { setSession } from '../store/sessionStore.js';
-import { verifyPassword } from '../utils/auth.js';
 import { MotionPage } from '../components/motion/MotionPage.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Input } from '../components/ui/Input.jsx';
@@ -23,25 +23,16 @@ const FEATURES = [
 
 const TRUST = ['Secure', 'Fast', 'Reliable'];
 
-/** Mock login credentials (email -> password) for demo. Other users in seed: use "demo". */
-const MOCK_CREDENTIALS = {
-  'admin@demo.com': 'admin123',
-  'employee@demo.com': 'employee123',
-};
-
-const DEMO_HINT_ADMIN = 'Admin: admin@demo.com / admin123 ';
-const DEMO_HINT_EMPLOYEE = ' Employee: employee@demo.com / employee123';
+const DEMO_HINT = 'Sign in with your account email and password.';
 
 /**
- * Root / Login page — Uses app design tokens for consistent UI/UX.
+ * Root / Login page — Backend JWT authentication.
  */
 export function LoginPage() {
   const navigate = useNavigate();
-  const { state } = useDataStore();
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(null);
+  const [loading, setLoading] = useState(false);
   const reduced = prefersReducedMotion();
-  const users = state.users || [];
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,38 +56,25 @@ export function LoginPage() {
         return;
       }
       setLoading(true);
-      const user = users.find((u) => (u.email || '').toLowerCase() === emailTrim);
-      if (!user) {
-        setError('User not found. Check your email or ensure seed data is loaded.');
-        setLoading(false);
-        return;
+      try {
+        const data = await loginApi(emailTrim, pass);
+        setToken(data.token);
+        const user = await getCurrentUser();
+        setSession(user);
+        if (user.role === 'ADMIN') {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/app', { replace: true });
+        }
+      } catch {
+        if (isMountedRef.current) {
+          setError('Invalid email or password.');
+        }
+      } finally {
+        if (isMountedRef.current) setLoading(false);
       }
-      let valid = false;
-      if (user.passwordHash) {
-        valid = await verifyPassword(pass, user.passwordHash);
-      } else {
-        const expectedPassword = MOCK_CREDENTIALS[user.email] ?? 'demo';
-        valid = pass === expectedPassword;
-      }
-      if (!valid) {
-        setError('Invalid password.');
-        setLoading(false);
-        return;
-      }
-      setSession({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name,
-      });
-      if (user.role === 'ADMIN') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/app', { replace: true });
-      }
-      if (isMountedRef.current) setLoading(false);
     },
-    [email, password, users, navigate]
+    [email, password, navigate]
   );
 
   const anyLoading = loading === true;
@@ -338,6 +316,15 @@ export function LoginPage() {
                     </button>
                   </div>
                 </div>
+                <div className="flex justify-end">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-medium text-[var(--accent)] hover:text-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-1 rounded px-1 py-0.5 disabled:opacity-50 disabled:pointer-events-none"
+                    tabIndex={anyLoading ? -1 : 0}
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
                 <Button
                   type="submit"
                   variant="primary"
@@ -358,10 +345,7 @@ export function LoginPage() {
 
               <div className="pt-5 mt-5 border-t border-[var(--border)]/80">
                 <p className="text-[10px] text-[var(--fg-muted)] text-center leading-relaxed" id="login-demo-hint">
-                  {DEMO_HINT_ADMIN}
-                </p>
-                <p className="text-[10px] text-[var(--fg-muted)] text-center leading-relaxed" id="login-demo-hint">
-                  {DEMO_HINT_EMPLOYEE}
+                  {DEMO_HINT}
                 </p>
               </div>
             </div>
